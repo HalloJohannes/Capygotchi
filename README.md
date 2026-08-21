@@ -18,6 +18,10 @@ Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Brows
 - Tagebuch mit gemeinsamen Erinnerungen
 - „Während du weg warst“-Bericht beim Wiederöffnen
 - Mehrere Capys in einer Bibliothek anlegen und jederzeit zwischen ihren getrennten Spielständen wechseln
+- Fünf Tagesquests pro Capy mit eigenem Quest-Tagebuch, Glitzerbelohnungen und Tages-Serie
+- Sechs komplexere Minispiele: Glitzerjagd, Merkspiel, Kaffee-Timing, zwiebelfreies Grillfest, Stadt-Tour und Seerosen-Rhythmus
+- Gemeinsame Herausforderungen, die Füttern, Spielen, Pflegen, Gespräche und Ausflüge miteinander verbinden
+- Die erste Quest erscheint genau eine Minute nach der Adoption; weitere Abenteuer verteilen sich über den Tag
 - Vier wählbare Fellfarben für eine unverwechselbare Capy-Familie
 - Persönliche Widmung von Johannes vor der ersten Namensvergabe; vorgeschlagener Name ist Emmi
 - Offline-Betrieb als Progressive Web App
@@ -41,4 +45,4 @@ Die eigenständige GitHub-Pages-App liegt in `public/capygotchi`. Der Workflow u
 
 ## Datenschutz
 
-Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte und die gesamte Capy-Bibliothek verlassen das Gerät nicht. Mit Einführung der Bibliothek werden die Spielstände früherer Einzel-Capy-Versionen einmalig zurückgesetzt.
+Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte, Quests und die gesamte Capy-Bibliothek verlassen das Gerät nicht. Bestehende Spielstände werden bei neuen Versionen migriert und nicht mehr zurückgesetzt.
