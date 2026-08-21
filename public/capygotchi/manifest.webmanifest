@@ -1,7 +1,7 @@
 {
   "name": "Capygotchi",
   "short_name": "Capygotchi",
-  "description": "Dein kleines Pixel-Capybara mit echten Bedürfnissen.",
+  "description": "Deine Bibliothek interaktiver Pixel-Capybaras mit eigenen Spielständen.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
