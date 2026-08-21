@@ -1,18 +1,23 @@
 # Capygotchi
 
-Ein installierbares Pixel-Capybara für iPhone und Browser. Das Capygotchi spricht Deutsch, entwickelt seine Bedürfnisse in Echtzeit weiter und speichert seinen Zustand ausschließlich auf dem jeweiligen Gerät.
+Ein installierbares, interaktives Pixel-Capybara für iPhone und Browser. Emmi spricht Deutsch, entwickelt ihre Bedürfnisse in Echtzeit weiter und speichert ihren Zustand ausschließlich auf dem jeweiligen Gerät.
 
 **[Capygotchi jetzt öffnen →](https://hallojohannes.github.io/Capygotchi/)**
 
-## Was bereits funktioniert
+## Was Emmi kann
 
-- Füttern mit verschiedenen Leckerbissen
-- Ballfang-Minispiel
-- Bürsten und Baden
+- Futter per Touch zur Schnute ziehen und beim Fressen zusehen
+- Ball und Frisbee werfen, Seifenblasen jagen und am Zerrseil spielen
+- Das Fell selbst bürsten, trockenrubbeln und Emmi sichtbar in den Teich springen lassen
+- Kuscheln, reden, Sonnenbaden und gemeinsam das Gehege erkunden
+- Mehrstufige Gespräche mit wählbaren Antworten und situationsabhängigen Reaktionen
 - Schlafmodus mit echter Erholung über Zeit
 - Streicheln per Tipp auf das Capybara
 - Deutsche Sprachausgabe, Pixel-Töne und optionale Haptik
-- Level, Stimmung und vier fortlaufende Bedürfnisse
+- Level, Stimmung und sechs fortlaufende Bedürfnisse
+- Tagebuch mit gemeinsamen Erinnerungen
+- „Während du weg warst“-Bericht beim Wiederöffnen
+- Persönliche Widmung von Johannes vor der ersten Namensvergabe; vorgeschlagener Name ist Emmi
 - Offline-Betrieb als Progressive Web App
 - Automatische Veröffentlichung über GitHub Pages
 
