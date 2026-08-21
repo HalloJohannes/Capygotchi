@@ -1,0 +1,14 @@
+{
+  "name": "Capygotchi",
+  "short_name": "Capygotchi",
+  "description": "Dein kleines Pixel-Capybara mit echten Bedürfnissen.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fff8e9",
+  "theme_color": "#fff8e9",
+  "lang": "de-DE",
+  "categories": ["games", "lifestyle"]
+}

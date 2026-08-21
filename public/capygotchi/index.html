@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#fff8e9" />
+    <meta name="description" content="Dein kleines Pixel-Capybara mit echten Bedürfnissen für die Hosentasche." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Capygotchi" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>Capygotchi</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell" id="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow"><span id="day-label">TAG 1</span> · <time id="clock">08:42</time></p>
+          <h1>CAPYGOTCHI</h1>
+        </div>
+        <button class="round-button" id="settings-button" type="button" aria-label="Einstellungen öffnen">
+          <span class="pixel-dots" aria-hidden="true"></span>
+        </button>
+      </header>
+
+      <section class="habitat" id="habitat" data-period="day" aria-label="Zuhause deines Capygotchis">
+        <div class="sky-pixels" aria-hidden="true">
+          <span class="sun"></span>
+          <span class="moon"></span>
+          <span class="star star-one"></span>
+          <span class="star star-two"></span>
+          <span class="cloud cloud-one"></span>
+          <span class="cloud cloud-two"></span>
+        </div>
+
+        <div class="speech" role="status" aria-live="polite">
+          <span id="speech-text">Mit dir ist jeder Tag ein guter Capy-Tag.</span>
+          <button id="speech-button" type="button" aria-label="Capygotchi vorlesen lassen">
+            <span class="speaker-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <button class="pet-button" id="pet-button" type="button" aria-label="Capygotchi streicheln">
+          <span class="pixel-capy" id="pixel-capy" role="img" aria-label="Ein freundliches Pixel-Capybara"></span>
+          <span class="sleep-z sleep-z-one" aria-hidden="true">Z</span>
+          <span class="sleep-z sleep-z-two" aria-hidden="true">Z</span>
+          <span class="dirt-pixel dirt-one" aria-hidden="true"></span>
+          <span class="dirt-pixel dirt-two" aria-hidden="true"></span>
+          <span class="heart-layer" id="heart-layer" aria-hidden="true"></span>
+          <span class="pet-shadow" aria-hidden="true"></span>
+        </button>
+
+        <div class="mini-game" id="mini-game" hidden>
+          <div class="game-status">
+            <span>TREFFER <strong id="game-score">0</strong></span>
+            <span>ZEIT <strong id="game-time">12</strong></span>
+          </div>
+          <button class="game-ball" id="game-ball" type="button" aria-label="Ball fangen"><span></span></button>
+          <button class="game-stop" id="game-stop" type="button">STOPP</button>
+        </div>
+
+        <div class="ground" aria-hidden="true">
+          <span class="reed reed-one"></span>
+          <span class="reed reed-two"></span>
+          <span class="water"></span>
+        </div>
+      </section>
+
+      <section class="pet-card" aria-labelledby="pet-name">
+        <div class="name-line">
+          <div>
+            <p class="eyebrow">DEIN CAPYBARA</p>
+            <div class="pet-title"><h2 id="pet-name">MOMO</h2><span id="level">LV. 1</span></div>
+            <div class="xp-track" aria-label="Fortschritt zum nächsten Level"><span id="xp-fill"></span></div>
+          </div>
+          <div class="mood mood-happy" id="mood"><span aria-hidden="true">♥</span> GLÜCKLICH</div>
+        </div>
+
+        <div class="need-grid">
+          <div class="need">
+            <div><span>SATT</span><strong data-value="satiety">82%</strong></div>
+            <div class="meter" data-meter="satiety" role="progressbar" aria-label="Satt" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+          </div>
+          <div class="need">
+            <div><span>SPASS</span><strong data-value="fun">78%</strong></div>
+            <div class="meter" data-meter="fun" role="progressbar" aria-label="Spaß" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+          </div>
+          <div class="need">
+            <div><span>SAUBER</span><strong data-value="clean">90%</strong></div>
+            <div class="meter" data-meter="clean" role="progressbar" aria-label="Sauberkeit" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+          </div>
+          <div class="need">
+            <div><span>ENERGIE</span><strong data-value="energy">88%</strong></div>
+            <div class="meter" data-meter="energy" role="progressbar" aria-label="Energie" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="actions" id="actions" aria-label="Mit deinem Capygotchi interagieren">
+        <button type="button" data-action="feed">
+          <span class="action-icon icon-carrot" aria-hidden="true"></span>
+          <strong>FÜTTERN</strong><small>Leckerbissen</small>
+        </button>
+        <button type="button" data-action="play">
+          <span class="action-icon icon-ball" aria-hidden="true"></span>
+          <strong>SPIELEN</strong><small>Ball fangen</small>
+        </button>
+        <button type="button" data-action="care">
+          <span class="action-icon icon-brush" aria-hidden="true"></span>
+          <strong>PFLEGEN</strong><small>Fell &amp; Bad</small>
+        </button>
+        <button type="button" data-action="sleep" id="sleep-action">
+          <span class="action-icon icon-moon" aria-hidden="true"></span>
+          <strong id="sleep-label">SCHLAFEN</strong><small>Licht aus</small>
+        </button>
+      </nav>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <dialog class="sheet welcome-sheet" id="welcome-dialog">
+      <form id="welcome-form">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <p class="sheet-kicker">EIN NEUER FREUND</p>
+        <h2>Dein Capybara zieht ein!</h2>
+        <p>Es braucht regelmäßig Futter, Spiel, Pflege und Schlaf. Wie soll es heißen?</p>
+        <label class="text-field">NAME
+          <input id="welcome-name" name="name" maxlength="14" autocomplete="off" value="Momo" />
+        </label>
+        <div class="welcome-options">
+          <label><input type="checkbox" name="voice" checked /> Deutsche Stimme</label>
+          <label><input type="checkbox" name="sound" checked /> Pixel-Töne</label>
+        </div>
+        <button class="primary-button" type="submit">EINZIEHEN LASSEN</button>
+        <small>Der Spielstand bleibt ausschließlich auf diesem Gerät.</small>
+      </form>
+    </dialog>
+
+    <dialog class="sheet" id="food-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">FÜTTERN</p><h2>Was gibt es?</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="choice-list">
+        <button type="button" data-choice="food" data-key="carrot"><span class="choice-pixel choice-carrot"></span><span><strong>KAROTTE</strong><small>+18 satt · knackig</small></span><b>›</b></button>
+        <button type="button" data-choice="food" data-key="apple"><span class="choice-pixel choice-apple"></span><span><strong>APFEL</strong><small>+14 satt · +3 Energie</small></span><b>›</b></button>
+        <button type="button" data-choice="food" data-key="melon"><span class="choice-pixel choice-melon"></span><span><strong>MELONE</strong><small>+24 satt · etwas klebrig</small></span><b>›</b></button>
+      </div>
+    </dialog>
+
+    <dialog class="sheet" id="care-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">PFLEGEN</p><h2>Wellness-Zeit</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="choice-list">
+        <button type="button" data-choice="care" data-key="brush"><span class="choice-pixel choice-brush"></span><span><strong>BÜRSTEN</strong><small>+18 sauber · gemütlich</small></span><b>›</b></button>
+        <button type="button" data-choice="care" data-key="bath"><span class="choice-pixel choice-bath"></span><span><strong>BADEN</strong><small>+34 sauber · plitsch, platsch</small></span><b>›</b></button>
+      </div>
+    </dialog>
+
+    <dialog class="sheet settings-sheet" id="settings-dialog">
+      <form id="settings-form">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="sheet-title"><div><p class="sheet-kicker">CAPYGOTCHI</p><h2>Einstellungen</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+        <label class="text-field">NAME
+          <input id="settings-name" maxlength="14" autocomplete="off" />
+        </label>
+        <div class="toggle-list">
+          <label><span><strong>Deutsche Stimme</strong><small>Capygotchi liest seine Sätze vor</small></span><input id="setting-voice" type="checkbox" /></label>
+          <label><span><strong>Pixel-Töne</strong><small>Kleine Töne bei Aktionen</small></span><input id="setting-sound" type="checkbox" /></label>
+          <label><span><strong>Haptik</strong><small>Kurzes Feedback, wenn unterstützt</small></span><input id="setting-haptics" type="checkbox" /></label>
+        </div>
+        <button class="primary-button" type="submit">SPEICHERN</button>
+        <button class="secondary-button" id="install-help-button" type="button">AUF IPHONE INSTALLIEREN</button>
+        <div class="install-help" id="install-help" hidden>
+          <strong>So geht’s in Safari:</strong>
+          <ol><li>Unten auf „Teilen“ tippen.</li><li>„Zum Home-Bildschirm“ wählen.</li><li>Mit „Hinzufügen“ bestätigen.</li></ol>
+        </div>
+        <p class="privacy-note">Dein Spielstand wird nur in diesem Browser gespeichert und nicht übertragen.</p>
+        <button class="danger-button" id="reset-button" type="button">SPIELSTAND LÖSCHEN</button>
+      </form>
+    </dialog>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
