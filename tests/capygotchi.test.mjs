@@ -117,6 +117,6 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(app, /bathAnimation/);
   assert.match(app, /startBubbles/);
   assert.equal(JSON.parse(manifest).display, "standalone");
-  assert.match(serviceWorker, /capygotchi-v3/);
+  assert.match(serviceWorker, /capygotchi-v4/);
   assert.match(serviceWorker, /dialogues\.js/);
 });
