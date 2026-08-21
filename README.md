@@ -1,6 +1,6 @@
 # Capygotchi
 
-Ein installierbares, interaktives Pixel-Capybara für iPhone und Browser. Emmi spricht Deutsch, entwickelt ihre Bedürfnisse in Echtzeit weiter und speichert ihren Zustand ausschließlich auf dem jeweiligen Gerät.
+Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Browser. Jedes Capy spricht Deutsch, entwickelt seine Bedürfnisse in Echtzeit weiter und besitzt einen eigenen lokalen Spielstand.
 
 **[Capygotchi jetzt öffnen →](https://hallojohannes.github.io/Capygotchi/)**
 
@@ -17,6 +17,8 @@ Ein installierbares, interaktives Pixel-Capybara für iPhone und Browser. Emmi s
 - Level, Stimmung und sechs fortlaufende Bedürfnisse
 - Tagebuch mit gemeinsamen Erinnerungen
 - „Während du weg warst“-Bericht beim Wiederöffnen
+- Mehrere Capys in einer Bibliothek anlegen und jederzeit zwischen ihren getrennten Spielständen wechseln
+- Vier wählbare Fellfarben für eine unverwechselbare Capy-Familie
 - Persönliche Widmung von Johannes vor der ersten Namensvergabe; vorgeschlagener Name ist Emmi
 - Offline-Betrieb als Progressive Web App
 - Automatische Veröffentlichung über GitHub Pages
@@ -39,4 +41,4 @@ Die eigenständige GitHub-Pages-App liegt in `public/capygotchi`. Der Workflow u
 
 ## Datenschutz
 
-Die App hat kein Nutzerkonto und keinen Server für Spielstände. Name, Fortschritt und Einstellungen verlassen das Gerät nicht.
+Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte und die gesamte Capy-Bibliothek verlassen das Gerät nicht. Mit Einführung der Bibliothek werden die Spielstände früherer Einzel-Capy-Versionen einmalig zurückgesetzt.
