@@ -2,7 +2,6 @@ import {
   CARE,
   FOODS,
   NEED_KEYS,
-  STORAGE_KEY,
   TOGETHER,
   TOYS,
   absenceReport,
@@ -15,9 +14,9 @@ import {
   makeState,
   moodFor,
   statusPhrase,
-} from "./game-core.js?v=5";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=5";
-import { dialogueFor } from "./dialogues.js?v=5";
+} from "./game-core.js?v=6";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=6";
+import { dialogueFor } from "./dialogues.js?v=6";
 import {
   LIBRARY_KEY,
   activeProfile,
@@ -27,7 +26,19 @@ import {
   removeProfile,
   selectProfile,
   updateProfile,
-} from "./pet-library.js?v=5";
+} from "./pet-library.js?v=6";
+import {
+  QUEST_DEFINITIONS,
+  activateQuest,
+  completeQuest,
+  currentQuest,
+  normalizeQuestProgress,
+  questIsDue,
+  questTimeLabel,
+  recordQuestAction,
+  taskQuestComplete,
+} from "./quest-core.js?v=6";
+import { startQuestGame } from "./quest-games.js?v=6";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -86,6 +97,12 @@ const elements = {
   awayDialog: $("#away-dialog"),
   journalDialog: $("#journal-dialog"),
   libraryDialog: $("#library-dialog"),
+  questDialog: $("#quest-dialog"),
+  questGameDialog: $("#quest-game-dialog"),
+  questAlert: $("#quest-alert"),
+  questBadge: $("#quest-badge"),
+  questStage: $("#quest-stage"),
+  questGameStatus: $("#quest-game-status"),
   dialogueDialog: $("#dialogue-dialog"),
   settingsDialog: $("#settings-dialog"),
 };
@@ -108,13 +125,15 @@ let audioContext;
 let deferredInstallPrompt = null;
 let suppressClickUntil = 0;
 let adoptionMode = "first";
+let questWakeTimer = 0;
+let activeGameCleanup = null;
+let pendingQuestAction = null;
+let lastQuestNotice = "";
 
 const NAME_SUGGESTIONS = ["Emmi", "Flocke", "Lotti", "Pino", "Nala", "Keks", "Maja", "Oskar"];
 
 function loadState() {
   try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem("capygotchi-library-v1");
     const raw = localStorage.getItem(LIBRARY_KEY);
     library = raw ? normalizeLibrary(JSON.parse(raw)) : emptyLibrary();
     const profile = activeProfile(library);
@@ -143,6 +162,200 @@ function saveState() {
   }
 }
 
+function scheduleQuestWake(now = Date.now()) {
+  window.clearTimeout(questWakeTimer);
+  questWakeTimer = 0;
+  if (!hasStoredState || !state.questProgress) return;
+  const quest = currentQuest(state.questProgress);
+  if (!quest || state.questProgress.activeId || state.questProgress.nextAt <= now) return;
+  const delay = Math.min(2_147_000_000, Math.max(25, state.questProgress.nextAt - now + 25));
+  questWakeTimer = window.setTimeout(() => {
+    questWakeTimer = 0;
+    render(Date.now());
+  }, delay);
+}
+
+function renderQuestIndicator(now = Date.now()) {
+  if (!hasStoredState || !state.questProgress) {
+    elements.questAlert.hidden = true;
+    elements.questBadge.hidden = true;
+    scheduleQuestWake(now);
+    return;
+  }
+  const quest = currentQuest(state.questProgress);
+  const due = questIsDue(state.questProgress, now);
+  elements.questAlert.hidden = !due;
+  elements.questBadge.hidden = !due;
+  if (quest) $("#quest-alert-title").textContent = quest.title;
+  if (due && quest) {
+    const noticeKey = `${activePetId}:${state.questProgress.dayKey}:${quest.id}`;
+    if (noticeKey !== lastQuestNotice && !document.hidden && !interactionBusy && !elements.welcomeDialog.open && !elements.dedicationDialog.open) {
+      lastQuestNotice = noticeKey;
+      talk(state.questProgress.activeId
+        ? `Unsere Quest „${quest.title}“ wartet auf uns.`
+        : quest.intro);
+      playSound("happy");
+      haptic([12, 35, 12]);
+    }
+  }
+  scheduleQuestWake(now);
+}
+
+function renderQuestBoard(now = Date.now()) {
+  if (!state.questProgress) return;
+  state.questProgress = normalizeQuestProgress(state.questProgress, state.adoptedAt, now, `${activePetId}:${state.name}`);
+  const progress = state.questProgress;
+  const completedById = new Map(progress.completed.map((entry) => [entry.id, entry]));
+  const nextQuest = currentQuest(progress);
+  $("#quest-summary").innerHTML = `
+    <div><strong>${progress.completed.length}/5</strong><small>HEUTE</small></div>
+    <div><strong>✦ ${progress.glitter}</strong><small>GLITZER</small></div>
+    <div><strong>${progress.streak || 0}</strong><small>TAGES-SERIE</small></div>`;
+  const list = $("#quest-list");
+  list.replaceChildren();
+  progress.queue.forEach((id, index) => {
+    const quest = QUEST_DEFINITIONS[id];
+    const completed = completedById.get(id);
+    const active = progress.activeId === id;
+    const current = nextQuest?.id === id;
+    const due = current && questIsDue(progress, now) && !active;
+    const card = document.createElement("article");
+    card.className = `quest-card ${completed ? "is-done" : active ? "is-active" : due ? "is-due" : "is-locked"}`;
+    const icon = document.createElement("span");
+    icon.className = "quest-card-icon";
+    icon.textContent = completed ? "✓" : quest.icon;
+    const info = document.createElement("div");
+    info.className = "quest-card-info";
+    const title = document.createElement("strong");
+    title.textContent = `${index + 1}. ${quest.title}`;
+    const description = document.createElement("small");
+    description.textContent = quest.short;
+    const meta = document.createElement("span");
+    meta.textContent = completed
+      ? `${"★".repeat(completed.stars)} · +${completed.reward} GLITZER`
+      : active ? "QUEST AKTIV"
+        : current ? questTimeLabel(progress, now)
+          : "WIRD SPÄTER FREIGESCHALTET";
+    info.append(title, description, meta);
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "quest-card-action";
+    action.dataset.questId = id;
+    action.disabled = Boolean(completed || (!active && !due));
+    action.textContent = completed ? "FERTIG" : active ? (quest.type === "task" ? "ANSEHEN" : "SPIELEN") : due ? "STARTEN" : "GESPERRT";
+    card.append(icon, info, action);
+    if (active && quest.type === "task") {
+      const goals = document.createElement("div");
+      goals.className = "quest-goals";
+      quest.goals.forEach((goal) => {
+        const row = document.createElement("div");
+        const done = progress.taskDone.includes(goal.action);
+        row.className = `quest-goal${done ? " is-done" : ""}`;
+        row.textContent = `${done ? "✓" : "○"} ${goal.label}`;
+        goals.append(row);
+      });
+      card.append(goals);
+    }
+    list.append(card);
+  });
+}
+
+function openQuestBoard() {
+  if (!hasStoredState) return;
+  if (interactionBusy) {
+    showToast("Lass die aktuelle Aktion kurz zu Ende gehen.");
+    return;
+  }
+  closeTray();
+  renderQuestBoard();
+  openDialog(elements.questDialog);
+}
+
+function startQuestById(id) {
+  if (state.sleeping) {
+    showToast(`Weck ${state.name} zuerst ganz sanft auf.`);
+    return;
+  }
+  const quest = QUEST_DEFINITIONS[id];
+  if (!quest) return;
+  state.questProgress = activateQuest(state.questProgress, id);
+  if (state.questProgress.activeId !== id) {
+    showToast("Diese Quest ist noch nicht freigeschaltet.");
+    return;
+  }
+  saveState();
+  if (quest.type === "task") {
+    if (elements.questDialog.open) elements.questDialog.close();
+    talk(quest.intro);
+    showToast("Die Quest läuft – nutze unten die normalen Aktionen.", 3600);
+    render();
+    return;
+  }
+  if (elements.questDialog.open) elements.questDialog.close();
+  activeGameCleanup?.();
+  activeGameCleanup = null;
+  $("#quest-game-kicker").textContent = `${quest.icon} GEMEINSAME QUEST`;
+  $("#quest-game-title").textContent = quest.title;
+  $("#quest-game-instruction").textContent = quest.instruction;
+  elements.questGameStatus.textContent = "BEREIT?";
+  openDialog(elements.questGameDialog);
+  activeGameCleanup = startQuestGame({
+    quest,
+    stage: elements.questStage,
+    status: elements.questGameStatus,
+    onMessage: (message) => talk(message, { speak: false }),
+    onFinish: (score) => finishQuestGame(score),
+  });
+  render();
+}
+
+function finishQuestGame(score) {
+  const quest = currentQuest(state.questProgress);
+  if (!quest || quest.type !== "minigame" || state.questProgress.activeId !== quest.id) return;
+  activeGameCleanup?.();
+  activeGameCleanup = null;
+  state.questProgress = completeQuest(state.questProgress, quest.id, score);
+  const result = state.questProgress.completed.find((entry) => entry.id === quest.id);
+  state = applyChanges(state, quest.reward);
+  remember(`${state.name} hat die Quest „${quest.title}“ mit ${result.stars} Sternen gemeistert.`, "✦");
+  if (elements.questGameDialog.open) elements.questGameDialog.close();
+  talk(`${"Stern! ".repeat(result.stars)}Wir haben „${quest.title}“ geschafft. Mit dir sind Abenteuer noch schöner!`);
+  animateCapy("is-loved", 1700);
+  playSound("happy");
+  haptic([18, 25, 18, 25, 30]);
+  showToast(`QUEST GESCHAFFT · +${result.reward} GLITZER · ${result.score} PUNKTE`, 4200);
+  render();
+}
+
+function cancelQuestGame() {
+  activeGameCleanup?.();
+  activeGameCleanup = null;
+  if (elements.questGameDialog.open) elements.questGameDialog.close();
+  talk("Kein Problem. Unsere Quest wartet hier auf uns.", { speak: false });
+  render();
+}
+
+function trackQuestAction() {
+  const action = pendingQuestAction;
+  pendingQuestAction = null;
+  if (!action || !state.questProgress) return null;
+  const quest = currentQuest(state.questProgress);
+  if (!quest || quest.type !== "task") return null;
+  const updated = recordQuestAction(state.questProgress, action);
+  if (updated === state.questProgress) return null;
+  state.questProgress = updated;
+  if (!taskQuestComplete(updated)) {
+    showToast(`QUEST: ${updated.taskDone.length}/${quest.goals.length} AUFGABEN ERLEDIGT`, 3200);
+    return null;
+  }
+  state.questProgress = completeQuest(updated, quest.id, 100);
+  const result = state.questProgress.completed.find((entry) => entry.id === quest.id);
+  state = applyChanges(state, quest.reward);
+  remember(`${state.name} hat mit dir die Quest „${quest.title}“ vollständig erlebt.`, "✦");
+  showToast(`QUEST GESCHAFFT · +${result.reward} GLITZER`, 4200);
+  return { quest, result };
+}
+
 function buildPixelCapy() {
   elements.capy.style.setProperty("--capy-cols", CAPY_WIDTH);
   elements.capy.style.setProperty("--capy-rows", CAPY_HEIGHT);
@@ -161,6 +374,7 @@ function buildPixelCapy() {
 
 function render(now = Date.now()) {
   state = advanceState(state, now);
+  if (hasStoredState) state.questProgress = normalizeQuestProgress(state.questProgress, state.adoptedAt, now, `${activePetId}:${state.name}`);
   const mood = moodFor(state);
   const level = levelInfo(state.xp);
   const hour = new Date(now).getHours();
@@ -196,6 +410,7 @@ function render(now = Date.now()) {
   $$('button[data-action]:not([data-action="sleep"])', elements.actions).forEach((button) => {
     button.disabled = state.sleeping || interactionBusy;
   });
+  renderQuestIndicator(now);
   saveState();
 }
 
@@ -280,10 +495,14 @@ function remember(text, icon) {
 function finishInteraction(changes, phrase, memory, icon = "♥") {
   state = applyChanges(state, changes);
   remember(memory, icon);
+  const questCompletion = trackQuestAction();
   interactionBusy = false;
-  talk(phrase);
+  talk(questCompletion
+    ? `Geschafft! „${questCompletion.quest.title}“ war richtig schön mit dir. Schau, wie viel es glitzert!`
+    : phrase);
   playSound("happy");
-  haptic([18, 30, 18]);
+  haptic(questCompletion ? [18, 25, 18, 25, 30] : [18, 30, 18]);
+  if (questCompletion) animateCapy("is-loved", 1700);
   render();
 }
 
@@ -456,6 +675,7 @@ async function performItem(category, key, clientPoint) {
   const item = GROUPS[category]?.items[key];
   if (!item) return;
   interactionBusy = true;
+  pendingQuestAction = `${category}:${key}`;
   selectedItem = null;
   render();
 
@@ -808,7 +1028,8 @@ function renderLibrary() {
     const meta = document.createElement("small");
     meta.textContent = `TAG ${dayNumber(preview)} · LV. ${levelInfo(preview.xp).level} · ${mood.label}`;
     const visit = document.createElement("span");
-    visit.textContent = profile.id === activePetId ? "Gerade bei dir" : relativeVisit(profile.lastPlayedAt);
+    const previewQuests = normalizeQuestProgress(preview.questProgress, preview.adoptedAt, Date.now(), `${profile.id}:${preview.name}`);
+    visit.textContent = `${profile.id === activePetId ? "Gerade bei dir" : relativeVisit(profile.lastPlayedAt)} · ✦ ${previewQuests.glitter}`;
     info.append(name, meta, visit);
 
     const actions = document.createElement("div");
@@ -842,12 +1063,20 @@ function openLibrary() {
 }
 
 function resetSceneForSwitch() {
+  window.clearTimeout(questWakeTimer);
+  questWakeTimer = 0;
+  activeGameCleanup?.();
+  activeGameCleanup = null;
+  if (elements.questGameDialog.open) elements.questGameDialog.close();
+  if (elements.questDialog.open) elements.questDialog.close();
   closeTray();
   if (bubbleSession) window.clearTimeout(bubbleSession.timer);
   bubbleSession = null;
   currentConversation = null;
   interactionBusy = false;
   selectedItem = null;
+  pendingQuestAction = null;
+  lastQuestNotice = "";
   elements.sceneLayer.replaceChildren();
   elements.bubbleLayer.replaceChildren();
   elements.habitat.classList.remove("bath-time", "drop-ready");
@@ -978,6 +1207,8 @@ elements.bubbleLayer.addEventListener("click", (event) => {
 $("#tray-close").addEventListener("click", closeTray);
 $("#speech-button").addEventListener("click", () => talk(currentPhrase));
 $("#library-button").addEventListener("click", openLibrary);
+$("#quest-button").addEventListener("click", openQuestBoard);
+elements.questAlert.addEventListener("click", openQuestBoard);
 $("#journal-button").addEventListener("click", () => { renderJournal(); openDialog(elements.journalDialog); });
 $("#settings-button").addEventListener("click", () => { syncSettingsForm(); openDialog(elements.settingsDialog); });
 
@@ -1004,6 +1235,18 @@ $("#library-list").addEventListener("click", (event) => {
   if (button.dataset.libraryAction === "remove") deletePet(card.dataset.profileId);
 });
 
+$("#quest-list").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-quest-id]");
+  if (button && !button.disabled) startQuestById(button.dataset.questId);
+});
+
+$("#quest-game-close").addEventListener("click", cancelQuestGame);
+$("#quest-game-cancel").addEventListener("click", cancelQuestGame);
+elements.questGameDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  cancelQuestGame();
+});
+
 $("#welcome-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -1018,7 +1261,7 @@ $("#welcome-form").addEventListener("submit", (event) => {
   hasStoredState = true;
   saveState();
   elements.welcomeDialog.close();
-  talk(`Hallo! Ich bin ${state.name}. Ich mag warme Teiche, Melone und dass du jetzt da bist. Danke, dass du auf mich aufpasst!`);
+  talk(`Hallo! Ich bin ${state.name}. Ich liebe Glitzer, Ausflüge, Brettspiele, Grillabende ohne Zwiebeln – und vor allem Gesellschaft. Schön, dass du da bist!`);
   animateCapy("is-loved", 1600);
   playSound("happy");
   render();
