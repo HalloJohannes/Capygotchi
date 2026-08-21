@@ -1,5 +1,28 @@
 export const DIALOGUES = Object.freeze([
   {
+    id: "favorite-things",
+    title: "Capys Lieblingsdinge",
+    memory: "Ihr habt über Glitzer, Ausflüge und einen perfekten Spieleabend gesprochen.",
+    turns: [
+      {
+        prompt: "Ich mag Glitzer, Gesellschaft und unterwegs sein. Was machen wir bei unserem nächsten Ausflug?",
+        choices: [
+          { label: "Ein gemütliches Café suchen", response: "Oh ja! Ich nehme Hafer-Milchschaum und den Platz, an dem wir alle Leute sehen können.", changes: { social: 5, energy: 3 } },
+          { label: "Glitzersteine am Teich sammeln", response: "Ich finde die funkelnden und du passt auf, dass ich vor Freude nicht hineinplumpse.", changes: { curiosity: 6, fun: 4 } },
+          { label: "Einen Spieleladen besuchen", response: "Brettspiele! Ich wähle natürlich die glitzernde Figur und verliere ausgesprochen würdevoll.", changes: { fun: 6, social: 4 } },
+        ],
+      },
+      {
+        prompt: "Danach könnten wir grillen. Du weißt hoffentlich, was niemals auf meinen Teller kommt?",
+        choices: [
+          { label: "Zwiebeln – auf keinen Fall", response: "Du kennst mich! Diese runden Betrüger bleiben ganz weit weg von meiner Schnute.", changes: { social: 7, fun: 2 } },
+          { label: "Nur Mais und Melone", response: "Knackig, süß und zwiebelfrei. Du bist eindeutig Grillmeister meines Herzens.", changes: { satiety: 3, social: 5 } },
+          { label: "Ein Überraschungsteller", response: "Einverstanden – aber wir machen vorher gemeinsam die große Zwiebelkontrolle.", changes: { curiosity: 4, fun: 4 } },
+        ],
+      },
+    ],
+  },
+  {
     id: "perfect-day",
     title: "Ein perfekter Capy-Tag",
     memory: "Ihr habt euren perfekten gemeinsamen Tag geplant.",
