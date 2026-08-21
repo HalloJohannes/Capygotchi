@@ -4,7 +4,7 @@ export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cr
 export const NEED_KEYS = Object.freeze(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
 
 export const DEFAULT_STATE = Object.freeze({
-  version: 3,
+  version: 4,
   name: "Emmi",
   furVariant: "classic",
   adoptedAt: 0,
@@ -22,6 +22,7 @@ export const DEFAULT_STATE = Object.freeze({
   sound: true,
   haptics: true,
   memories: [],
+  questProgress: null,
 });
 
 export const FOODS = Object.freeze({
@@ -93,7 +94,7 @@ export function normalizeState(candidate, now = Date.now()) {
   return {
     ...base,
     ...candidate,
-    version: 3,
+    version: 4,
     name: cleanName(candidate.name),
     furVariant: FUR_VARIANTS.includes(candidate.furVariant) ? candidate.furVariant : "classic",
     adoptedAt: Number.isFinite(candidate.adoptedAt) && candidate.adoptedAt > 0 ? candidate.adoptedAt : now,
@@ -111,6 +112,7 @@ export function normalizeState(candidate, now = Date.now()) {
     sound: candidate.sound !== false,
     haptics: candidate.haptics !== false,
     memories: normalizeMemories(candidate.memories),
+    questProgress: candidate.questProgress && typeof candidate.questProgress === "object" ? candidate.questProgress : null,
   };
 }
 
@@ -293,6 +295,12 @@ const HAPPY_PHRASES = Object.freeze([
   "Wusstest du, dass ein Nasenstups praktisch eine winzige Umarmung ist?",
   "Ich bin froh, dass Johannes ausgerechnet uns beide zusammengebracht hat.",
   "Vielleicht bin ich dein Haustier. Aber du bist eindeutig mein Lieblingsmensch.",
+  "Wenn irgendwo etwas glitzert, muss ich kurz hinsehen. Das ist Capy-Gesetz.",
+  "Kaffeeduft, ein Brettspiel und du am Tisch – so klingt ein ziemlich perfekter Nachmittag.",
+  "Ich wäre heute gern unterwegs. Mein Abenteuergepäck besteht aus Mut und drei Snacks.",
+  "Grillen wir bald zusammen? Für mich bitte alles außer Zwiebeln. Wirklich alles außer Zwiebeln.",
+  "Gesellschaft ist mein Lieblingswetter. Mit dir ist heute eindeutig sonnig.",
+  "Ich habe das Spielbrett aufgebaut. Die Glitzerfigur gehört natürlich mir.",
 ]);
 
 export function statusPhrase(state, now = Date.now()) {
