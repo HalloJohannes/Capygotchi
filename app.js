@@ -1,6 +1,5 @@
 import {
   CARE,
-  DEFAULT_STATE,
   FOODS,
   NEED_KEYS,
   STORAGE_KEY,
@@ -16,9 +15,19 @@ import {
   makeState,
   moodFor,
   statusPhrase,
-} from "./game-core.js?v=4";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=4";
-import { dialogueFor } from "./dialogues.js?v=4";
+} from "./game-core.js?v=5";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=5";
+import { dialogueFor } from "./dialogues.js?v=5";
+import {
+  LIBRARY_KEY,
+  activeProfile,
+  addProfile,
+  emptyLibrary,
+  normalizeLibrary,
+  removeProfile,
+  selectProfile,
+  updateProfile,
+} from "./pet-library.js?v=5";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -76,10 +85,13 @@ const elements = {
   welcomeDialog: $("#welcome-dialog"),
   awayDialog: $("#away-dialog"),
   journalDialog: $("#journal-dialog"),
+  libraryDialog: $("#library-dialog"),
   dialogueDialog: $("#dialogue-dialog"),
   settingsDialog: $("#settings-dialog"),
 };
 
+let library = emptyLibrary();
+let activePetId = null;
 let hasStoredState = false;
 let awayInfo = null;
 let state = loadState();
@@ -95,25 +107,39 @@ let lastPetAt = 0;
 let audioContext;
 let deferredInstallPrompt = null;
 let suppressClickUntil = 0;
+let adoptionMode = "first";
+
+const NAME_SUGGESTIONS = ["Emmi", "Flocke", "Lotti", "Pino", "Nala", "Keks", "Maja", "Oskar"];
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    hasStoredState = Boolean(raw);
-    if (!raw) return makeState();
-    awayInfo = absenceReport(JSON.parse(raw));
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("capygotchi-library-v1");
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    library = raw ? normalizeLibrary(JSON.parse(raw)) : emptyLibrary();
+    const profile = activeProfile(library);
+    hasStoredState = Boolean(profile);
+    if (!profile) return makeState();
+    activePetId = profile.id;
+    awayInfo = absenceReport(profile.state);
+    library = updateProfile(library, activePetId, awayInfo.state);
     return awayInfo.state;
   } catch {
+    library = emptyLibrary();
+    activePetId = null;
+    hasStoredState = false;
     return makeState();
   }
 }
 
 function saveState() {
-  if (!hasStoredState) return;
+  if (!hasStoredState || !activePetId) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    library = updateProfile(library, activePetId, state);
+    library = selectProfile(library, activePetId);
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
   } catch {
-    showToast("Der Spielstand konnte nicht gespeichert werden.");
+    showToast("Die Capy-Bibliothek konnte nicht gespeichert werden.");
   }
 }
 
@@ -145,6 +171,7 @@ function render(now = Date.now()) {
   elements.habitat.dataset.period = state.sleeping ? "night" : period;
   elements.habitat.classList.toggle("is-sleeping", state.sleeping);
   elements.capy.dataset.mood = mood.tone;
+  elements.capy.dataset.variant = state.furVariant;
   elements.capy.classList.toggle("is-dirty", state.clean < 38);
   elements.capy.classList.toggle("is-tired", state.energy < 25 && !state.sleeping);
   elements.name.textContent = state.name.toUpperCase();
@@ -729,6 +756,7 @@ function showAwayReport() {
 }
 
 function renderJournal() {
+  $("#journal-dialog .sheet-title h2").textContent = `${state.name}s Tagebuch`;
   $("#journal-summary").innerHTML = `<strong>TAG ${dayNumber(state)}</strong><span>${state.interactions} gemeinsame Momente · Level ${levelInfo(state.xp).level}</span>`;
   const list = $("#memory-list");
   list.replaceChildren();
@@ -748,6 +776,160 @@ function renderJournal() {
   });
 }
 
+function relativeVisit(timestamp) {
+  const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
+  if (minutes < 2) return "gerade aktiv";
+  if (minutes < 60) return `vor ${minutes} Min.`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `vor ${hours} Std.`;
+  const days = Math.round(hours / 24);
+  return `vor ${days} ${days === 1 ? "Tag" : "Tagen"}`;
+}
+
+function renderLibrary() {
+  saveState();
+  $("#library-count").textContent = `${library.profiles.length} ${library.profiles.length === 1 ? "CAPY" : "CAPYS"} IN DEINER FAMILIE`;
+  const list = $("#library-list");
+  list.replaceChildren();
+  library.profiles.forEach((profile) => {
+    const preview = advanceState(profile.state);
+    const mood = moodFor(preview);
+    const card = document.createElement("article");
+    card.className = `library-card${profile.id === activePetId ? " is-active" : ""}`;
+    card.dataset.profileId = profile.id;
+
+    const avatar = document.createElement("span");
+    avatar.className = `library-capy fur-${preview.furVariant}`;
+    avatar.setAttribute("aria-hidden", "true");
+    const info = document.createElement("div");
+    info.className = "library-pet-info";
+    const name = document.createElement("strong");
+    name.textContent = preview.name;
+    const meta = document.createElement("small");
+    meta.textContent = `TAG ${dayNumber(preview)} · LV. ${levelInfo(preview.xp).level} · ${mood.label}`;
+    const visit = document.createElement("span");
+    visit.textContent = profile.id === activePetId ? "Gerade bei dir" : relativeVisit(profile.lastPlayedAt);
+    info.append(name, meta, visit);
+
+    const actions = document.createElement("div");
+    actions.className = "library-card-actions";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.dataset.libraryAction = "switch";
+    open.textContent = profile.id === activePetId ? "AKTIV" : "ÖFFNEN";
+    open.disabled = profile.id === activePetId;
+    open.setAttribute("aria-label", `${preview.name} öffnen`);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.dataset.libraryAction = "remove";
+    remove.className = "library-remove";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", `${preview.name} aus der Bibliothek löschen`);
+    actions.append(open, remove);
+    card.append(avatar, info, actions);
+    list.append(card);
+  });
+}
+
+function openLibrary() {
+  if (interactionBusy) {
+    showToast("Lass die aktuelle Aktion kurz zu Ende gehen.");
+    return;
+  }
+  closeTray();
+  renderLibrary();
+  openDialog(elements.libraryDialog);
+}
+
+function resetSceneForSwitch() {
+  closeTray();
+  if (bubbleSession) window.clearTimeout(bubbleSession.timer);
+  bubbleSession = null;
+  currentConversation = null;
+  interactionBusy = false;
+  selectedItem = null;
+  elements.sceneLayer.replaceChildren();
+  elements.bubbleLayer.replaceChildren();
+  elements.habitat.classList.remove("bath-time", "drop-ready");
+  elements.capy.classList.remove(...CAPY_ANIMATIONS, "drop-ready");
+}
+
+function switchToPet(id) {
+  if (id === activePetId) {
+    elements.libraryDialog.close();
+    return;
+  }
+  saveState();
+  library = selectProfile(library, id);
+  const profile = activeProfile(library);
+  if (!profile) return;
+  activePetId = profile.id;
+  const report = absenceReport(profile.state);
+  state = report.state;
+  awayInfo = report;
+  library = updateProfile(library, activePetId, state);
+  currentPhrase = statusPhrase(state);
+  resetSceneForSwitch();
+  elements.libraryDialog.close();
+  render();
+  saveState();
+  if (report.elapsedMs >= 5 * 60_000) window.setTimeout(showAwayReport, 160);
+  else talk(`Da bist du ja! ${state.name} freut sich, dich zu sehen.`, { speak: false });
+}
+
+function prepareAdoption(mode = "new") {
+  adoptionMode = mode;
+  const form = $("#welcome-form");
+  form.reset();
+  const suggestion = NAME_SUGGESTIONS[library.profiles.length % NAME_SUGGESTIONS.length];
+  $("#welcome-name").value = suggestion;
+  $("#welcome-kicker").textContent = mode === "first" ? "DEIN ERSTES CAPY" : "NOCH EIN NEUER FREUND";
+  $("#welcome-title").textContent = mode === "first" ? "Erwecke dein Capygotchi!" : "Wer zieht als Nächstes ein?";
+  $("#welcome-copy").textContent = mode === "first"
+    ? "Deine neue Capy-Bibliothek beginnt hier. Wie soll dein erstes Capybara heißen?"
+    : "Dieses Capy bekommt einen ganz eigenen Spielstand mit eigenen Bedürfnissen und Erinnerungen.";
+  $("#welcome-cancel").hidden = mode !== "new";
+  if (mode === "new") {
+    form.elements.voice.checked = state.voice;
+    form.elements.sound.checked = state.sound;
+    const furInputs = [...form.elements.fur];
+    furInputs[library.profiles.length % furInputs.length].checked = true;
+  }
+}
+
+function deletePet(id) {
+  const profile = library.profiles.find((item) => item.id === id);
+  if (!profile) return;
+  if (!window.confirm(`Möchtest du ${profile.state.name} und diesen gesamten Spielstand wirklich löschen?`)) return;
+  const wasActive = id === activePetId;
+  if (wasActive) saveState();
+  library = removeProfile(library, id);
+  try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(library)); } catch { showToast("Löschen fehlgeschlagen."); return; }
+  if (!wasActive) {
+    renderLibrary();
+    return;
+  }
+  const next = activeProfile(library);
+  if (next) {
+    if (elements.settingsDialog.open) elements.settingsDialog.close();
+    activePetId = null;
+    switchToPet(next.id);
+    showToast(`${profile.state.name} wurde aus der Bibliothek gelöscht.`);
+    return;
+  }
+  activePetId = null;
+  hasStoredState = false;
+  awayInfo = null;
+  state = makeState();
+  currentPhrase = statusPhrase(state);
+  elements.libraryDialog.close();
+  elements.settingsDialog.close();
+  resetSceneForSwitch();
+  render();
+  prepareAdoption("empty");
+  openDialog(elements.welcomeDialog);
+}
+
 function syncSettingsForm() {
   $("#settings-name").value = state.name;
   $("#setting-voice").checked = state.voice;
@@ -759,7 +941,7 @@ buildPixelCapy();
 render();
 
 if (!hasStoredState) {
-  $("#welcome-name").value = DEFAULT_STATE.name;
+  prepareAdoption("first");
   window.setTimeout(() => openDialog(elements.dedicationDialog), 180);
 } else {
   window.setTimeout(showAwayReport, 280);
@@ -795,21 +977,44 @@ elements.bubbleLayer.addEventListener("click", (event) => {
 
 $("#tray-close").addEventListener("click", closeTray);
 $("#speech-button").addEventListener("click", () => talk(currentPhrase));
+$("#library-button").addEventListener("click", openLibrary);
 $("#journal-button").addEventListener("click", () => { renderJournal(); openDialog(elements.journalDialog); });
 $("#settings-button").addEventListener("click", () => { syncSettingsForm(); openDialog(elements.settingsDialog); });
 
 $("#dedication-next").addEventListener("click", () => {
   elements.dedicationDialog.close();
+  prepareAdoption("first");
   window.setTimeout(() => openDialog(elements.welcomeDialog), 120);
+});
+
+$("#new-pet-button").addEventListener("click", () => {
+  saveState();
+  elements.libraryDialog.close();
+  prepareAdoption("new");
+  window.setTimeout(() => openDialog(elements.welcomeDialog), 100);
+});
+
+$("#welcome-cancel").addEventListener("click", () => elements.welcomeDialog.close());
+
+$("#library-list").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-library-action]");
+  const card = event.target.closest(".library-card");
+  if (!button || !card) return;
+  if (button.dataset.libraryAction === "switch") switchToPet(card.dataset.profileId);
+  if (button.dataset.libraryAction === "remove") deletePet(card.dataset.profileId);
 });
 
 $("#welcome-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  state = makeState(Date.now(), form.get("name"));
+  state = makeState(Date.now(), form.get("name"), form.get("fur"));
   state.voice = form.get("voice") === "on";
   state.sound = form.get("sound") === "on";
-  state = addMemory(state, `Heute ist ${state.name} bei dir eingezogen – ein Geschenk von Johannes.`, "♥");
+  state = addMemory(state, adoptionMode === "first"
+    ? `Heute ist ${state.name} bei dir eingezogen – ein Geschenk von Johannes.`
+    : `${state.name} ist als neues Mitglied deiner Capy-Familie eingezogen.`, "♥");
+  library = addProfile(library, state);
+  activePetId = library.activeId;
   hasStoredState = true;
   saveState();
   elements.welcomeDialog.close();
@@ -836,10 +1041,7 @@ $("#settings-form").addEventListener("submit", (event) => {
 });
 
 $("#reset-button").addEventListener("click", () => {
-  if (window.confirm("Möchtest du deinen gesamten Capygotchi-Spielstand wirklich löschen?")) {
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
-  }
+  deletePet(activePetId);
 });
 
 $("#install-help-button").addEventListener("click", async () => {
