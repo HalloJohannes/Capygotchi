@@ -1,10 +1,12 @@
 export const STORAGE_KEY = "capygotchi-state-v1";
+export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cream"]);
 
 export const NEED_KEYS = Object.freeze(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
 
 export const DEFAULT_STATE = Object.freeze({
-  version: 2,
+  version: 3,
   name: "Emmi",
+  furVariant: "classic",
   adoptedAt: 0,
   updatedAt: 0,
   satiety: 82,
@@ -53,10 +55,11 @@ export function clamp(value, min = 0, max = 100) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function makeState(now = Date.now(), name = "Emmi") {
+export function makeState(now = Date.now(), name = "Emmi", furVariant = "classic") {
   return {
     ...DEFAULT_STATE,
     name: cleanName(name),
+    furVariant: FUR_VARIANTS.includes(furVariant) ? furVariant : "classic",
     adoptedAt: now,
     updatedAt: now,
     memories: [],
@@ -90,8 +93,9 @@ export function normalizeState(candidate, now = Date.now()) {
   return {
     ...base,
     ...candidate,
-    version: 2,
+    version: 3,
     name: cleanName(candidate.name),
+    furVariant: FUR_VARIANTS.includes(candidate.furVariant) ? candidate.furVariant : "classic",
     adoptedAt: Number.isFinite(candidate.adoptedAt) && candidate.adoptedAt > 0 ? candidate.adoptedAt : now,
     updatedAt: Number.isFinite(candidate.updatedAt) && candidate.updatedAt > 0 ? candidate.updatedAt : now,
     satiety: need("satiety"),
