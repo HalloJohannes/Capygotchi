@@ -11,7 +11,7 @@
     <meta name="format-detection" content="telephone=no" />
     <title>Capygotchi</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=4" />
+    <link rel="stylesheet" href="./styles.css?v=5" />
   </head>
   <body>
     <main class="app-shell" id="app">
@@ -21,6 +21,7 @@
           <h1>CAPYGOTCHI</h1>
         </div>
         <div class="header-actions">
+          <button class="round-button library-button" id="library-button" type="button" aria-label="Capy-Bibliothek öffnen"><span aria-hidden="true">▦</span></button>
           <button class="round-button journal-button" id="journal-button" type="button" aria-label="Tagebuch öffnen"><span aria-hidden="true">▤</span></button>
           <button class="round-button" id="settings-button" type="button" aria-label="Einstellungen öffnen"><span class="pixel-dots" aria-hidden="true"></span></button>
         </div>
@@ -109,15 +110,23 @@
     <dialog class="sheet welcome-sheet" id="welcome-dialog">
       <form id="welcome-form">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <p class="sheet-kicker">EIN NEUER FREUND</p>
-        <h2>Erwecke dein Capygotchi!</h2>
-        <p>Es lebt auch weiter, wenn die App geschlossen ist. Wie soll dein Capybara heißen?</p>
+        <p class="sheet-kicker" id="welcome-kicker">EIN NEUER FREUND</p>
+        <h2 id="welcome-title">Erwecke dein Capygotchi!</h2>
+        <p id="welcome-copy">Es lebt auch weiter, wenn die App geschlossen ist. Wie soll dein Capybara heißen?</p>
         <label class="text-field">NAME<input id="welcome-name" name="name" maxlength="14" autocomplete="off" value="Emmi" /></label>
+        <fieldset class="fur-picker">
+          <legend>FELLFARBE</legend>
+          <label><input type="radio" name="fur" value="classic" checked /><span class="fur-swatch fur-classic"></span><small>Klassisch</small></label>
+          <label><input type="radio" name="fur" value="golden" /><span class="fur-swatch fur-golden"></span><small>Gold</small></label>
+          <label><input type="radio" name="fur" value="chocolate" /><span class="fur-swatch fur-chocolate"></span><small>Schoko</small></label>
+          <label><input type="radio" name="fur" value="cream" /><span class="fur-swatch fur-cream"></span><small>Creme</small></label>
+        </fieldset>
         <div class="welcome-options">
           <label><input type="checkbox" name="voice" checked /> Deutsche Stimme</label>
           <label><input type="checkbox" name="sound" checked /> Pixel-Töne</label>
         </div>
         <button class="primary-button" type="submit">CAPYGOTCHI ZUM LEBEN ERWECKEN</button>
+        <button class="secondary-button" id="welcome-cancel" type="button" hidden>ABBRECHEN</button>
         <small>Der Spielstand bleibt ausschließlich auf diesem Gerät.</small>
       </form>
     </dialog>
@@ -130,6 +139,16 @@
       <p id="away-text">Dein Capybara war die ganze Zeit weiter lebendig.</p>
       <div class="away-changes" id="away-changes"></div>
       <button class="primary-button" id="away-close" type="button">JETZT KÜMMERN</button>
+    </dialog>
+
+    <dialog class="sheet library-sheet" id="library-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">DEINE CAPYS</p><h2>Capy-Bibliothek</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <p class="library-intro">Jedes Capy lebt in seinem eigenen Spielstand weiter – mit eigenen Bedürfnissen, Erinnerungen und Abenteuern.</p>
+      <div class="library-count" id="library-count"></div>
+      <div class="library-list" id="library-list"></div>
+      <button class="primary-button" id="new-pet-button" type="button">+ NEUES CAPY ERWECKEN</button>
+      <p class="privacy-note">Die gesamte Bibliothek bleibt ausschließlich auf diesem Gerät und in diesem Browser.</p>
     </dialog>
 
     <dialog class="sheet journal-sheet" id="journal-dialog">
@@ -162,10 +181,10 @@
         <button class="secondary-button" id="install-help-button" type="button">AUF IPHONE INSTALLIEREN</button>
         <div class="install-help" id="install-help" hidden><strong>So geht’s in Safari:</strong><ol><li>Unten auf „Teilen“ tippen.</li><li>„Zum Home-Bildschirm“ wählen.</li><li>Mit „Hinzufügen“ bestätigen.</li></ol></div>
         <p class="privacy-note">Name, Bedürfnisse und Erinnerungen bleiben lokal auf diesem Gerät. Auch nach dem Schließen wird verstrichene Zeit beim nächsten Öffnen nachberechnet.</p>
-        <button class="danger-button" id="reset-button" type="button">SPIELSTAND LÖSCHEN</button>
+        <button class="danger-button" id="reset-button" type="button">DIESES CAPY LÖSCHEN</button>
       </form>
     </dialog>
 
-    <script type="module" src="./app.js?v=4"></script>
+    <script type="module" src="./app.js?v=5"></script>
   </body>
 </html>
