@@ -2,6 +2,8 @@
 
 Ein installierbares Pixel-Capybara für iPhone und Browser. Das Capygotchi spricht Deutsch, entwickelt seine Bedürfnisse in Echtzeit weiter und speichert seinen Zustand ausschließlich auf dem jeweiligen Gerät.
 
+**[Capygotchi jetzt öffnen →](https://hallojohannes.github.io/Capygotchi/)**
+
 ## Was bereits funktioniert
 
 - Füttern mit verschiedenen Leckerbissen
