@@ -25,6 +25,17 @@ import {
   selectProfile,
   updateProfile,
 } from "../public/capygotchi/pet-library.js";
+import {
+  QUEST_DEFINITIONS,
+  activateQuest,
+  completeQuest,
+  currentQuest,
+  dailyQuestQueue,
+  normalizeQuestProgress,
+  questIsDue,
+  recordQuestAction,
+  taskQuestComplete,
+} from "../public/capygotchi/quest-core.js";
 
 test("six needs continue changing while the app is closed", () => {
   const start = Date.UTC(2026, 7, 21, 12);
@@ -58,7 +69,7 @@ test("absence report explains offline progress without killing the pet", () => {
   assert.equal(report.elapsedMs, 6 * 3_600_000);
   assert.ok(report.changes.satiety < 0);
   assert.ok(report.state.satiety >= 0);
-  assert.equal(report.state.version, 3);
+  assert.equal(report.state.version, 4);
 });
 
 test("interactions stay within healthy stat limits", () => {
@@ -77,7 +88,7 @@ test("pet state remains valid, names stay compact, and Emmi is the default", () 
   assert.ok(state.name.length <= 14);
   assert.equal(state.satiety, 100);
   assert.equal(state.fun, 0);
-  assert.equal(state.version, 3);
+  assert.equal(state.version, 4);
   assert.equal(state.social, 84);
   assert.equal(makeState(1).name, "Emmi");
   assert.equal(makeState(1, "Goldie", "golden").furVariant, "golden");
@@ -123,11 +134,61 @@ test("the finer capybara uses a consistent image-free pixel grid", () => {
 });
 
 test("dialogues offer multiple two-step conversations and adapt to needs", () => {
-  assert.ok(DIALOGUES.length >= 6);
+  assert.ok(DIALOGUES.length >= 7);
   assert.ok(DIALOGUES.every((dialogue) => dialogue.turns.length >= 2));
   assert.ok(DIALOGUES.every((dialogue) => dialogue.turns.every((turn) => turn.choices.length >= 3)));
   assert.equal(dialogueFor({ ...makeState(1), social: 10 }).id, "missing-you");
   assert.equal(dialogueFor({ ...makeState(1), curiosity: 10 }).id, "brave-capy");
+});
+
+test("the first quest becomes due exactly one minute after adoption", () => {
+  const adoptedAt = Date.UTC(2026, 7, 21, 12);
+  const progress = normalizeQuestProgress(null, adoptedAt, adoptedAt, "Emmi");
+  assert.equal(progress.queue[0], "glitter-hunt");
+  assert.equal(progress.nextAt, adoptedAt + 60_000);
+  assert.equal(questIsDue(progress, adoptedAt + 59_999), false);
+  assert.equal(questIsDue(progress, adoptedAt + 60_000), true);
+  assert.equal(currentQuest(progress).title, "Glitzer im Schilf");
+});
+
+test("daily quest plans mix complex games and shared pet-care tasks", () => {
+  const queue = dailyQuestQueue("2026-08-21", "Emmi", false);
+  assert.equal(queue.length, 5);
+  assert.ok(queue.filter((id) => QUEST_DEFINITIONS[id].type === "minigame").length >= 3);
+  assert.ok(queue.filter((id) => QUEST_DEFINITIONS[id].type === "task").length >= 2);
+  assert.ok(Object.values(QUEST_DEFINITIONS).filter((quest) => quest.type === "minigame").length >= 6);
+});
+
+test("shared tasks progress only through matching completed interactions", () => {
+  const now = Date.UTC(2026, 7, 21, 12);
+  const progress = {
+    ...normalizeQuestProgress(null, now - 60_000, now, "Emmi"),
+    queue: ["social-circle", "glitter-hunt", "day-trip", "board-memory", "city-tour"],
+    nextAt: now,
+  };
+  let active = activateQuest(progress, "social-circle", now);
+  active = recordQuestAction(active, "feed:melon");
+  assert.equal(active.taskDone.length, 0);
+  active = recordQuestAction(active, "together:cuddle");
+  active = recordQuestAction(active, "together:talk");
+  active = recordQuestAction(active, "play:rope");
+  assert.equal(taskQuestComplete(active), true);
+  const finished = completeQuest(active, "social-circle", 100, now + 1);
+  assert.equal(finished.completed[0].stars, 3);
+  assert.equal(finished.glitter, 9);
+  assert.equal(finished.lifetimeCompleted, 1);
+});
+
+test("state migration preserves Capys and adds quest progress without a reset", () => {
+  const now = Date.UTC(2026, 7, 21, 12);
+  const old = { ...makeState(now - 120_000, "Lotti"), version: 3, xp: 77, questProgress: null };
+  const migrated = normalizeState(old, now);
+  const quests = normalizeQuestProgress(migrated.questProgress, migrated.adoptedAt, now, "Lotti");
+  assert.equal(migrated.name, "Lotti");
+  assert.equal(migrated.xp, 77);
+  assert.equal(migrated.version, 4);
+  assert.equal(quests.nextAt, migrated.adoptedAt + 60_000);
+  assert.equal(questIsDue(quests, now), true);
 });
 
 test("the published app is German, installable, dedicated, and drag-interactive", async () => {
@@ -144,17 +205,24 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(html, /Zum Home-Bildschirm/);
   assert.match(html, /dialogue-dialog/);
   assert.match(html, /library-dialog/);
+  assert.match(html, /quest-dialog/);
+  assert.match(html, /quest-game-dialog/);
+  assert.match(html, /quest-alert/);
   assert.match(html, /NEUES CAPY ERWECKEN/);
   assert.match(html, /value="golden"/);
   assert.doesNotMatch(html, /<(img|svg)\b/i);
   assert.match(app, /pointermove/);
   assert.match(app, /bathAnimation/);
   assert.match(app, /startBubbles/);
-  assert.match(app, /localStorage\.removeItem\(STORAGE_KEY\)/);
-  assert.match(app, /capygotchi-library-v1/);
+  assert.doesNotMatch(app, /localStorage\.removeItem/);
+  assert.doesNotMatch(app, /capygotchi-library-v1/);
+  assert.match(app, /normalizeQuestProgress/);
+  assert.match(app, /startQuestGame/);
   assert.match(app, /switchToPet/);
   assert.equal(JSON.parse(manifest).display, "standalone");
-  assert.match(serviceWorker, /capygotchi-v5/);
+  assert.match(serviceWorker, /capygotchi-v6/);
   assert.match(serviceWorker, /dialogues\.js/);
   assert.match(serviceWorker, /pet-library\.js/);
+  assert.match(serviceWorker, /quest-core\.js/);
+  assert.match(serviceWorker, /quest-games\.js/);
 });
