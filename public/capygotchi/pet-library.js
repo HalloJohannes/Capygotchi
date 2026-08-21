@@ -1,4 +1,4 @@
-import { normalizeState } from "./game-core.js?v=5";
+import { normalizeState } from "./game-core.js?v=6";
 
 export const LIBRARY_KEY = "capygotchi-library-v2";
 
