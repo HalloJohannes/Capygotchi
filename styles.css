@@ -38,6 +38,7 @@ h3 { margin: 0; font-size: 16px; line-height: 1.1; }
 
 .round-button { width: 42px; height: 42px; flex: 0 0 auto; border: 3px solid var(--ink); border-radius: 50%; background: var(--gold); box-shadow: 3px 3px 0 var(--ink); }
 .journal-button { background: #d7ebd1; font-size: 21px; font-weight: 900; }
+.library-button { background: #f6d4a5; font-size: 21px; font-weight: 900; }
 .round-button:active, .actions button:active, .primary-button:active, .secondary-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 .pixel-dots, .pixel-dots::before, .pixel-dots::after { display: block; width: 4px; height: 4px; margin: auto; background: var(--ink); }
 .pixel-dots { position: relative; }
@@ -73,6 +74,9 @@ h3 { margin: 0; font-size: 16px; line-height: 1.1; }
 
 .pet-button { position: absolute; z-index: 5; left: 50%; bottom: 27px; width: 330px; height: 225px; padding: 0; transform: translateX(-50%); border: 0; background: transparent; cursor: pointer; touch-action: manipulation; }
 .pixel-capy { --px: 5.55px; position: absolute; z-index: 4; left: 50%; bottom: 20px; width: calc(var(--px) * var(--capy-cols)); height: calc(var(--px) * var(--capy-rows)); display: grid; grid-template-columns: repeat(var(--capy-cols), var(--px)); grid-template-rows: repeat(var(--capy-rows), var(--px)); transform: translateX(-50%); transform-origin: 50% 100%; animation: capy-breathe 2.3s steps(3, end) infinite; image-rendering: pixelated; transition: filter .2s; }
+.pixel-capy[data-variant="golden"] { --fur: #c68b45; --fur-light: #e1ac63; --fur-dark: #68452c; --muzzle: #d09b5f; }
+.pixel-capy[data-variant="chocolate"] { --fur: #704631; --fur-light: #97664b; --fur-dark: #33231d; --muzzle: #84563d; }
+.pixel-capy[data-variant="cream"] { --fur: #c3ab82; --fur-light: #e0cca6; --fur-dark: #665443; --muzzle: #cbb18a; }
 .pixel { width: var(--px); height: var(--px); }
 .pixel-d { background: var(--fur-dark); }
 .pixel-m { background: var(--fur); }
@@ -224,6 +228,16 @@ dialog::backdrop { background: rgb(32 26 23 / 58%); backdrop-filter: blur(2px); 
 .text-field input { width: 100%; min-height: 49px; padding: 10px 12px; border: 3px solid var(--ink); border-radius: 0; background: #fff; color: var(--ink); font-size: 18px; font-weight: 900; -webkit-user-select: text; user-select: text; }
 .welcome-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
 .welcome-options label { display: flex; align-items: center; gap: 7px; font-size: 9px; font-weight: 800; }
+.fur-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 14px 0 5px; padding: 0; border: 0; }
+.fur-picker legend { grid-column: 1 / -1; margin-bottom: 7px; color: #77655b; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+.fur-picker label { min-width: 0; display: grid; justify-items: center; gap: 5px; padding: 7px 3px; border: 2px solid var(--ink); background: #fff; font-size: 7px; font-weight: 900; text-align: center; cursor: pointer; }
+.fur-picker label:has(input:checked) { background: #fff0b8; box-shadow: 3px 3px var(--ink); }
+.fur-picker input { position: absolute; opacity: 0; pointer-events: none; }
+.fur-swatch { --swatch: var(--fur); position: relative; width: 34px; height: 21px; margin-top: 5px; background: var(--swatch); border: 3px solid var(--ink); }
+.fur-swatch::before { content: ""; position: absolute; right: -7px; top: -9px; width: 16px; height: 16px; border: 3px solid var(--ink); background: var(--swatch); }
+.fur-golden { --swatch: #c68b45; }
+.fur-chocolate { --swatch: #704631; }
+.fur-cream { --swatch: #c3ab82; }
 .primary-button, .secondary-button, .danger-button { width: 100%; min-height: 50px; margin-top: 14px; border: 3px solid var(--ink); font-weight: 900; font-size: 10px; letter-spacing: .05em; }
 .primary-button { background: var(--gold); box-shadow: 4px 4px var(--ink); }
 .secondary-button { background: #fff; box-shadow: 4px 4px var(--ink); }
@@ -234,6 +248,26 @@ dialog::backdrop { background: rgb(32 26 23 / 58%); backdrop-filter: blur(2px); 
 .away-changes div { display: flex; justify-content: space-between; padding: 9px; border: 2px solid var(--ink); background: #fff; font-size: 10px; font-weight: 900; }
 .away-changes .positive { color: var(--green); }
 .away-changes .negative { color: #bd4038; }
+.library-intro { margin-top: -4px !important; }
+.library-count { margin: 0 0 10px; color: #77655b; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.library-list { display: grid; gap: 10px; }
+.library-card { display: grid; grid-template-columns: 68px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 86px; padding: 10px; border: 3px solid var(--ink); background: #fff; box-shadow: 4px 4px var(--ink); }
+.library-card.is-active { background: #e8f3d7; }
+.library-capy { --mini-fur: #a86f43; position: relative; width: 55px; height: 31px; border: 3px solid var(--ink); background: var(--mini-fur); box-shadow: inset 0 7px rgb(255 255 255 / 14%); }
+.library-capy::before { content: ""; position: absolute; right: -8px; top: -13px; width: 27px; height: 27px; border: 3px solid var(--ink); background: var(--mini-fur); box-shadow: -5px -5px 0 -2px var(--ink); }
+.library-capy::after { content: ""; position: absolute; right: -5px; top: -5px; width: 5px; height: 5px; background: var(--ink); box-shadow: -8px 19px var(--ink), -36px 31px var(--ink), -17px 31px var(--ink); }
+.library-capy.fur-golden { --mini-fur: #c68b45; }
+.library-capy.fur-chocolate { --mini-fur: #704631; }
+.library-capy.fur-cream { --mini-fur: #c3ab82; }
+.library-pet-info { min-width: 0; }
+.library-pet-info strong, .library-pet-info small, .library-pet-info span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library-pet-info strong { font-size: 16px; text-transform: uppercase; }
+.library-pet-info small { margin-top: 5px; font-size: 8px; font-weight: 900; }
+.library-pet-info span { margin-top: 5px; color: #77655b; font-family: ui-rounded, system-ui, sans-serif; font-size: 9px; }
+.library-card-actions { display: grid; gap: 7px; }
+.library-card-actions button { min-width: 52px; min-height: 32px; padding: 4px 6px; border: 2px solid var(--ink); background: var(--gold); font-size: 8px; font-weight: 900; }
+.library-card-actions button:disabled { background: #d4dfc4; color: #52604b; }
+.library-card-actions .library-remove { min-width: 32px; justify-self: end; background: #f5d5cf; color: #8d2e27; font-size: 18px; line-height: 1; }
 .journal-summary { display: flex; justify-content: space-between; gap: 10px; padding: 11px; border: 2px solid var(--ink); background: #e8f0df; font-size: 9px; }
 .journal-summary span { text-align: right; }
 .memory-list { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
@@ -307,6 +341,10 @@ dialog::backdrop { background: rgb(32 26 23 / 58%); backdrop-filter: blur(2px); 
 @keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
 @media (max-width: 360px) {
+  .topbar { padding-inline: 12px 9px; }
+  .topbar h1 { font-size: 23px; }
+  .header-actions { gap: 5px; }
+  .header-actions .round-button { width: 36px; height: 36px; border-width: 2px; }
   .habitat { height: 340px; }
   .pixel-capy { --px: 5.15px; }
   .pet-button { width: 300px; height: 210px; }
