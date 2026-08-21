@@ -11,7 +11,7 @@
     <meta name="format-detection" content="telephone=no" />
     <title>Capygotchi</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=5" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
   </head>
   <body>
     <main class="app-shell" id="app">
@@ -21,6 +21,7 @@
           <h1>CAPYGOTCHI</h1>
         </div>
         <div class="header-actions">
+          <button class="round-button quest-button" id="quest-button" type="button" aria-label="Tagesquests öffnen"><span aria-hidden="true">✦</span><b id="quest-badge" hidden>!</b></button>
           <button class="round-button library-button" id="library-button" type="button" aria-label="Capy-Bibliothek öffnen"><span aria-hidden="true">▦</span></button>
           <button class="round-button journal-button" id="journal-button" type="button" aria-label="Tagebuch öffnen"><span aria-hidden="true">▤</span></button>
           <button class="round-button" id="settings-button" type="button" aria-label="Einstellungen öffnen"><span class="pixel-dots" aria-hidden="true"></span></button>
@@ -38,6 +39,11 @@
           <span id="speech-text">Mit dir ist jeder Tag ein guter Capy-Tag.</span>
           <button id="speech-button" type="button" aria-label="Capygotchi vorlesen lassen"><span class="speaker-icon" aria-hidden="true"></span></button>
         </div>
+        <button class="quest-alert" id="quest-alert" type="button" hidden>
+          <span class="quest-alert-icon" aria-hidden="true">✦</span>
+          <span><small>NEUE GEMEINSAME QUEST</small><strong id="quest-alert-title">Glitzer im Schilf</strong></span>
+          <b aria-hidden="true">›</b>
+        </button>
         <div class="drop-hint" id="drop-hint" hidden>HIERHER ZIEHEN</div>
 
         <button class="pet-button" id="pet-button" type="button" aria-label="Capygotchi streicheln oder ausgewählten Gegenstand geben">
@@ -151,6 +157,23 @@
       <p class="privacy-note">Die gesamte Bibliothek bleibt ausschließlich auf diesem Gerät und in diesem Browser.</p>
     </dialog>
 
+    <dialog class="sheet quest-sheet" id="quest-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">ABENTEUER MIT DEINEM CAPY</p><h2>Tagesquests</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="quest-summary" id="quest-summary"></div>
+      <p class="quest-intro">Über den Tag warten Spiele, Ausflüge und kleine gemeinsame Aufgaben. Jeder Capy hat seinen eigenen Fortschritt.</p>
+      <div class="quest-list" id="quest-list"></div>
+    </dialog>
+
+    <dialog class="sheet quest-game-sheet" id="quest-game-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker" id="quest-game-kicker">GEMEINSAME QUEST</p><h2 id="quest-game-title">Glitzer im Schilf</h2></div><button type="button" id="quest-game-close" aria-label="Minispiel verlassen">×</button></div>
+      <p class="quest-game-instruction" id="quest-game-instruction"></p>
+      <div class="quest-game-status" id="quest-game-status" role="status" aria-live="polite"></div>
+      <div class="quest-stage" id="quest-stage"></div>
+      <button class="secondary-button" id="quest-game-cancel" type="button">SPÄTER WEITERSPIELEN</button>
+    </dialog>
+
     <dialog class="sheet journal-sheet" id="journal-dialog">
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-title"><div><p class="sheet-kicker">ERINNERUNGEN</p><h2>Emmis Tagebuch</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
@@ -185,6 +208,6 @@
       </form>
     </dialog>
 
-    <script type="module" src="./app.js?v=5"></script>
+    <script type="module" src="./app.js?v=6"></script>
   </body>
 </html>
