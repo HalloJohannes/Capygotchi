@@ -16,9 +16,9 @@ import {
   makeState,
   moodFor,
   statusPhrase,
-} from "./game-core.js";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js";
-import { dialogueFor } from "./dialogues.js";
+} from "./game-core.js?v=4";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=4";
+import { dialogueFor } from "./dialogues.js?v=4";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
