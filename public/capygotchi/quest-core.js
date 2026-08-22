@@ -113,6 +113,21 @@ export const QUEST_DEFINITIONS = Object.freeze({
     ],
     reward: { xp: 23, clean: 6, energy: 6, fun: 7 },
   },
+  "pickle-picnic": {
+    id: "pickle-picnic",
+    type: "task",
+    icon: "▰",
+    title: "Die geheime Gurkenpause",
+    short: "Findet eine seltene Gewürzgurke und macht daraus einen Ausflug.",
+    intro: "Psst! Im Markt gibt es gerade Gewürzgurken. Meine absolute Lieblingsknabberei! Machen wir eine Gurkenpause?",
+    instruction: "Die seltene Gewürzgurke ist während dieser Quest im Futterfach verfügbar.",
+    goals: [
+      { action: "feed:pickle", label: "Gewürzgurke gemeinsam knacken" },
+      { action: "together:explore", label: "Einen Picknickplatz entdecken" },
+      { action: "together:cuddle", label: "Nach dem Ausflug kuscheln" },
+    ],
+    reward: { xp: 26, satiety: 5, fun: 12, social: 8, curiosity: 5 },
+  },
 });
 
 const QUEST_IDS = Object.keys(QUEST_DEFINITIONS);
