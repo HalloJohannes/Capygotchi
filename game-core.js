@@ -4,7 +4,7 @@ export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cr
 export const NEED_KEYS = Object.freeze(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
 
 export const DEFAULT_STATE = Object.freeze({
-  version: 4,
+  version: 5,
   name: "Emmi",
   furVariant: "classic",
   adoptedAt: 0,
@@ -23,6 +23,8 @@ export const DEFAULT_STATE = Object.freeze({
   haptics: true,
   memories: [],
   questProgress: null,
+  travel: null,
+  landscapeArea: "home",
 });
 
 export const FOODS = Object.freeze({
@@ -30,6 +32,8 @@ export const FOODS = Object.freeze({
   apple: { label: "Apfel", detail: "+14 satt · saftig", satiety: 14, fun: 1, energy: 3, xp: 3, phrase: "Knirsch. Der ist wunderbar saftig!" },
   melon: { label: "Melone", detail: "+24 satt · Lieblingsfutter", satiety: 24, fun: 5, clean: -3, xp: 5, phrase: "Mmmelone! Jetzt klebt meine Schnute." },
   pumpkin: { label: "Kürbis", detail: "+20 satt · macht neugierig", satiety: 20, curiosity: 4, xp: 4, phrase: "So orange und so lecker. Davon will ich mehr!" },
+  pickle: { label: "Gewürzgurke", detail: "Selten · liebt es!", temporary: true, reaction: "love", satiety: 9, fun: 13, social: 3, clean: -2, xp: 7, phrase: "KNACK! Gewürzgurken sind kleine grüne Glücksmomente!" },
+  onion: { label: "Zwiebel", detail: "Selten · hasst es", temporary: true, reaction: "hate", satiety: 2, fun: -18, social: -5, energy: -2, xp: 1, phrase: "BÄH! Eine Zwiebel! Meine Schnute ist zutiefst enttäuscht." },
 });
 
 export const TOYS = Object.freeze({
@@ -94,7 +98,7 @@ export function normalizeState(candidate, now = Date.now()) {
   return {
     ...base,
     ...candidate,
-    version: 4,
+    version: 5,
     name: cleanName(candidate.name),
     furVariant: FUR_VARIANTS.includes(candidate.furVariant) ? candidate.furVariant : "classic",
     adoptedAt: Number.isFinite(candidate.adoptedAt) && candidate.adoptedAt > 0 ? candidate.adoptedAt : now,
@@ -113,7 +117,38 @@ export function normalizeState(candidate, now = Date.now()) {
     haptics: candidate.haptics !== false,
     memories: normalizeMemories(candidate.memories),
     questProgress: candidate.questProgress && typeof candidate.questProgress === "object" ? candidate.questProgress : null,
+    travel: candidate.travel && typeof candidate.travel === "object" ? candidate.travel : null,
+    landscapeArea: ["home", "meadow", "garden"].includes(candidate.landscapeArea) ? candidate.landscapeArea : "home",
   };
+}
+
+function foodSeed(state) {
+  return [...String(state?.name || "capy")].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+}
+
+export function foodAvailability(key, state, now = Date.now(), questId = "") {
+  const item = FOODS[key];
+  if (!item?.temporary) return { available: true, limited: false };
+  if (key === "pickle" && questId === "pickle-picnic") return { available: true, limited: true, reason: "QUEST-FUND" };
+  const seed = foodSeed(state);
+  const windowSize = key === "pickle" ? 2 * 3_600_000 : 90 * 60_000;
+  const every = key === "pickle" ? 4 : 8;
+  const bucket = Math.floor(now / windowSize);
+  const available = (bucket + seed + (key === "onion" ? 3 : 0)) % every === 0;
+  return {
+    available,
+    limited: true,
+    reason: available ? "NUR KURZE ZEIT" : "NICHT IM MARKT",
+    nextChangeAt: (bucket + 1) * windowSize,
+  };
+}
+
+export function growthFor(state) {
+  const { level } = levelInfo(state?.xp || 0);
+  if (level >= 10) return { id: "majestic", label: "PRÄCHTIGES CAPY", level };
+  if (level >= 6) return { id: "grown", label: "ERWACHSENES CAPY", level };
+  if (level >= 3) return { id: "young", label: "JUNGES CAPY", level };
+  return { id: "baby", label: "KLEINES CAPY", level };
 }
 
 export function advanceState(input, now = Date.now()) {
