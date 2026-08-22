@@ -11,7 +11,7 @@
     <meta name="format-detection" content="telephone=no" />
     <title>Capygotchi</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
   </head>
   <body>
     <main class="app-shell" id="app">
@@ -28,12 +28,15 @@
         </div>
       </header>
 
-      <section class="habitat" id="habitat" data-period="day" aria-label="Zuhause deines Capygotchis">
+      <section class="habitat" id="habitat" data-period="day" data-area="home" data-weather="partly" aria-label="Die große Landschaft deines Capygotchis">
         <div class="sky-pixels" aria-hidden="true">
           <span class="sun"></span><span class="moon"></span>
           <span class="star star-one"></span><span class="star star-two"></span>
           <span class="cloud cloud-one"></span><span class="cloud cloud-two"></span>
         </div>
+        <div class="weather-fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <button class="weather-chip" id="weather-button" type="button" aria-label="Aktuelles Deutschland-Wetter anzeigen"><span id="weather-icon" aria-hidden="true">◒</span><strong id="weather-temperature">18°</strong><small>DE-MITTE</small></button>
+        <div class="area-name" id="area-name">ZUHAUSE AM TEICH</div>
 
         <div class="speech" role="status" aria-live="polite">
           <span id="speech-text">Mit dir ist jeder Tag ein guter Capy-Tag.</span>
@@ -46,6 +49,14 @@
         </button>
         <div class="drop-hint" id="drop-hint" hidden>HIERHER ZIEHEN</div>
 
+        <div class="landscape-scenery">
+          <span class="distant-hill hill-one" aria-hidden="true"></span><span class="distant-hill hill-two" aria-hidden="true"></span>
+          <button class="landmark cabin" type="button" data-landmark="cabin" aria-label="Emmis kleine Schlafhütte ansehen"><span class="cabin-roof"></span><span class="cabin-window"></span><span class="cabin-door"></span><small>CAPY-HÜTTE</small></button>
+          <div class="deer-pen" aria-label="Im Hintergrund leben Damhirsche"><span class="fence"></span><span class="pixel-deer deer-one"></span><span class="pixel-deer deer-two"></span><small>DAMWILD-GEHEGE</small></div>
+          <button class="landmark garden-shed" type="button" data-landmark="garden" aria-label="Den kleinen Garten ansehen"><span></span><small>GURKENGARTEN</small></button>
+          <span class="pixel-chicken" id="pixel-chicken" aria-label="Ein kleines Huhn läuft durch die Landschaft"></span>
+        </div>
+
         <button class="pet-button" id="pet-button" type="button" aria-label="Capygotchi streicheln oder ausgewählten Gegenstand geben">
           <span class="pixel-capy" id="pixel-capy" role="img" aria-label="Ein freundliches, fein gepixeltes Capybara"></span>
           <span class="sleep-z sleep-z-one" aria-hidden="true">Z</span><span class="sleep-z sleep-z-two" aria-hidden="true">Z</span>
@@ -57,10 +68,21 @@
         <div class="bubble-layer" id="bubble-layer" aria-label="Seifenblasen-Spiel"></div>
         <div class="splash-layer" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
+        <button class="travel-postcard" id="travel-postcard" type="button" hidden>
+          <span class="travel-stamp" id="travel-stamp" aria-hidden="true">✦</span>
+          <span><small id="travel-kind">REISEPOST · FANTASIEORT</small><strong id="travel-place">Glitzerfjord</strong><em id="travel-countdown">NOCH 2 STD.</em></span>
+          <b>REISE ANSEHEN ›</b>
+        </button>
+
         <div class="ground" aria-hidden="true">
           <span class="reed reed-one"></span><span class="reed reed-two"></span>
           <span class="water" id="pond"></span>
         </div>
+        <nav class="world-navigation" id="world-navigation" aria-label="Bereiche der Capy-Landschaft">
+          <button type="button" data-area="home" class="is-active"><span>⌂</span>ZUHAUSE</button>
+          <button type="button" data-area="meadow"><span>♣</span>WILDWIESE</button>
+          <button type="button" data-area="garden"><span>▰</span>GARTEN</button>
+        </nav>
       </section>
 
       <section class="pet-card" aria-labelledby="pet-name">
@@ -68,6 +90,7 @@
           <div>
             <p class="eyebrow">DEIN CAPYBARA</p>
             <div class="pet-title"><h2 id="pet-name">EMMI</h2><span id="level">LV. 1</span></div>
+            <div class="growth-label" id="growth-label">KLEINES CAPY · WÄCHST MIT DIR</div>
             <div class="xp-track" aria-label="Fortschritt zum nächsten Level"><span id="xp-fill"></span></div>
           </div>
           <div class="mood mood-happy" id="mood"><span aria-hidden="true">♥</span> GLÜCKLICH</div>
@@ -147,6 +170,28 @@
       <button class="primary-button" id="away-close" type="button">JETZT KÜMMERN</button>
     </dialog>
 
+    <dialog class="sheet travel-sheet" id="travel-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker" id="travel-dialog-kind">REISEPOST</p><h2 id="travel-dialog-title">Glitzerfjord</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="travel-illustration" id="travel-illustration" data-palette="glitter" aria-hidden="true"><span class="travel-capy-dot">●</span><i></i><i></i><i></i><i></i></div>
+      <div class="travel-location"><span id="travel-dialog-icon">✦</span><div><small>GERADE IN</small><strong id="travel-dialog-place">Funkelholm</strong></div></div>
+      <p id="travel-dialog-doing"></p>
+      <div class="travel-fact"><strong>WUSSTEST DU?</strong><span id="travel-dialog-fact"></span></div>
+      <div class="travel-progress" aria-label="Fortschritt der Reise"><span id="travel-progress-fill"></span></div>
+      <div class="travel-return"><strong id="travel-dialog-countdown">NOCH 2 STD.</strong><small>Dann kommt dein Capy von allein zurück.</small></div>
+      <p class="travel-history" id="travel-history"></p>
+    </dialog>
+
+    <dialog class="sheet weather-sheet" id="weather-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">ECHTES WETTER</p><h2>Wetter über der Capy-Welt</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="weather-hero"><span id="weather-dialog-icon">◒</span><div><strong id="weather-dialog-label">Sonne & Wolken</strong><small id="weather-dialog-temp">18 °C</small></div></div>
+      <p id="weather-dialog-phrase"></p>
+      <div class="weather-metrics"><div><small>WOLKEN</small><strong id="weather-clouds">48 %</strong></div><div><small>NIEDERSCHLAG</small><strong id="weather-rain">0 mm</strong></div></div>
+      <p class="weather-explanation">Ein ungefährer Deutschland-Mittelwert aus Hamburg, Berlin, Frankfurt und München. Bei fehlendem Netz übernimmt eine jahreszeitliche Offline-Landschaft.</p>
+      <p class="weather-credit">Wetterdaten: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo.com</a> · CC BY 4.0</p>
+    </dialog>
+
     <dialog class="sheet library-sheet" id="library-dialog">
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-title"><div><p class="sheet-kicker">DEINE CAPYS</p><h2>Capy-Bibliothek</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
@@ -208,6 +253,6 @@
       </form>
     </dialog>
 
-    <script type="module" src="./app.js?v=6"></script>
+    <script type="module" src="./app.js?v=7"></script>
   </body>
 </html>

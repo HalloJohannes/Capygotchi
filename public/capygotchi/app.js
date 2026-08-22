@@ -10,13 +10,15 @@ import {
   applyChanges,
   cleanName,
   dayNumber,
+  foodAvailability,
+  growthFor,
   levelInfo,
   makeState,
   moodFor,
   statusPhrase,
-} from "./game-core.js?v=6";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=6";
-import { dialogueFor } from "./dialogues.js?v=6";
+} from "./game-core.js?v=7";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=7";
+import { dialogueFor } from "./dialogues.js?v=7";
 import {
   LIBRARY_KEY,
   activeProfile,
@@ -26,7 +28,7 @@ import {
   removeProfile,
   selectProfile,
   updateProfile,
-} from "./pet-library.js?v=6";
+} from "./pet-library.js?v=7";
 import {
   QUEST_DEFINITIONS,
   activateQuest,
@@ -37,8 +39,16 @@ import {
   questTimeLabel,
   recordQuestAction,
   taskQuestComplete,
-} from "./quest-core.js?v=6";
-import { startQuestGame } from "./quest-games.js?v=6";
+} from "./quest-core.js?v=7";
+import { startQuestGame } from "./quest-games.js?v=7";
+import {
+  destinationById,
+  isTraveling,
+  normalizeTravel,
+  travelProgress,
+  travelTimeLabel,
+} from "./travel-core.js?v=7";
+import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=7";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -62,7 +72,7 @@ const GROUPS = {
 
 const CAPY_ANIMATIONS = [
   "is-eating", "is-loved", "is-fetching", "is-playing", "is-brushed", "is-bathing",
-  "is-drying", "is-cuddling", "is-talking", "is-exploring", "is-sunbathing", "is-tugging",
+  "is-drying", "is-cuddling", "is-talking", "is-exploring", "is-sunbathing", "is-tugging", "is-disgusted",
 ];
 
 const elements = {
@@ -103,6 +113,11 @@ const elements = {
   questBadge: $("#quest-badge"),
   questStage: $("#quest-stage"),
   questGameStatus: $("#quest-game-status"),
+  travelPostcard: $("#travel-postcard"),
+  travelDialog: $("#travel-dialog"),
+  weatherDialog: $("#weather-dialog"),
+  weatherIcon: $("#weather-icon"),
+  weatherTemperature: $("#weather-temperature"),
   dialogueDialog: $("#dialogue-dialog"),
   settingsDialog: $("#settings-dialog"),
 };
@@ -129,6 +144,8 @@ let questWakeTimer = 0;
 let activeGameCleanup = null;
 let pendingQuestAction = null;
 let lastQuestNotice = "";
+let weatherData = fallbackGermanyWeather();
+let weatherLoading = false;
 
 const NAME_SUGGESTIONS = ["Emmi", "Flocke", "Lotti", "Pino", "Nala", "Keks", "Maja", "Oskar"];
 
@@ -162,6 +179,124 @@ function saveState() {
   }
 }
 
+function travelSeed() {
+  return `${activePetId || "new"}:${state.name}:${state.adoptedAt}`;
+}
+
+function syncTravelState(now = Date.now()) {
+  if (!hasStoredState) return false;
+  const previousStatus = state.travel?.status || "home";
+  const canDepart = !state.sleeping && !interactionBusy && !currentConversation && !activeTray && !document.querySelector("dialog[open]");
+  if (!state.travel || state.travel.status === "away" || canDepart) {
+    state.travel = normalizeTravel(state.travel, state.adoptedAt, now, travelSeed());
+  }
+  const traveling = isTraveling(state.travel, now);
+  if (state.travel?.returnPending && !traveling) {
+    const destination = destinationById(state.travel.lastDestinationId);
+    state.travel = { ...state.travel, returnPending: false };
+    state = applyChanges(state, { curiosity: 9, fun: 5, social: -2, energy: -4, xp: 12 });
+    remember(`${state.name} ist aus ${destination?.title || "einem Abenteuer"} zurück und brachte ${state.travel.lastSouvenir || "eine schöne Erinnerung"} mit.`, "⌁");
+    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe dir ${state.travel.lastSouvenir || "eine Erinnerung"} mitgebracht.`;
+    showToast(`${state.name.toUpperCase()} IST VON DER REISE ZURÜCK!`, 4200);
+  } else if (traveling) {
+    const destination = destinationById(state.travel.destinationId);
+    currentPhrase = `Reisepost von ${state.name}: Ich bin gerade in ${destination.title} und komme von allein wieder zurück.`;
+  }
+  if (previousStatus !== state.travel?.status && state.travel?.status === "away") {
+    const destination = destinationById(state.travel.destinationId);
+    showToast(`${state.name} ist allein nach ${destination.title} gereist.`, 4200);
+  }
+  return traveling;
+}
+
+function wanderPosition(now = Date.now()) {
+  const value = [...`${state.name}:${state.landscapeArea}:${Math.floor(now / 30_000)}`]
+    .reduce((sum, character) => ((sum * 31) + character.charCodeAt(0)) >>> 0, 17);
+  return 25 + (value % 51);
+}
+
+function renderLandscape(now = Date.now(), traveling = isTraveling(state.travel, now)) {
+  const growth = growthFor(state);
+  if (state.sleeping) state.landscapeArea = "home";
+  elements.habitat.dataset.area = state.landscapeArea;
+  elements.habitat.classList.toggle("is-away", traveling);
+  elements.petButton.dataset.growth = growth.id;
+  elements.petButton.setAttribute("aria-label", `${state.name} streicheln oder einen ausgewählten Gegenstand geben`);
+  $('.cabin[data-landmark="cabin"]').setAttribute("aria-label", `${state.name}s kleine Schlafhütte ansehen`);
+  elements.petButton.style.setProperty("--pet-x", `${wanderPosition(now)}%`);
+  $("#growth-label").textContent = `${growth.label} · WÄCHST MIT DIR`;
+  const areaNames = { home: "ZUHAUSE AM TEICH", meadow: "WILDWIESE & DAMWILD", garden: "GURKENGARTEN" };
+  $("#area-name").textContent = traveling ? "CAPY AUF SOLO-REISE" : areaNames[state.landscapeArea];
+  $$('button[data-area]', $("#world-navigation")).forEach((button) => button.classList.toggle("is-active", button.dataset.area === state.landscapeArea));
+  elements.travelPostcard.hidden = !traveling;
+  if (!traveling) {
+    if (elements.travelDialog.open) elements.travelDialog.close();
+    return;
+  }
+  const destination = destinationById(state.travel.destinationId);
+  $("#travel-stamp").textContent = destination.icon;
+  $("#travel-kind").textContent = `REISEPOST · ${destination.kind}`;
+  $("#travel-place").textContent = destination.title;
+  $("#travel-countdown").textContent = travelTimeLabel(state.travel, now);
+  if (elements.travelDialog.open) {
+    $("#travel-dialog-countdown").textContent = travelTimeLabel(state.travel, now);
+    $("#travel-progress-fill").style.setProperty("--value", `${travelProgress(state.travel, now)}%`);
+  }
+}
+
+function renderWeather() {
+  elements.habitat.dataset.weather = weatherData.kind;
+  elements.weatherIcon.textContent = weatherData.icon;
+  elements.weatherTemperature.textContent = `${Math.round(weatherData.temperature)}°`;
+  $("#weather-dialog-icon").textContent = weatherData.icon;
+  $("#weather-dialog-label").textContent = weatherData.label;
+  $("#weather-dialog-temp").textContent = `${weatherData.temperature.toLocaleString("de-DE")} °C`;
+  $("#weather-dialog-phrase").textContent = weatherData.phrase;
+  $("#weather-clouds").textContent = `${weatherData.cloudCover} %`;
+  $("#weather-rain").textContent = `${weatherData.precipitation.toLocaleString("de-DE")} mm`;
+}
+
+async function refreshWeather(force = false) {
+  if (weatherLoading) return;
+  weatherLoading = true;
+  weatherData = await loadGermanyWeather({ force });
+  weatherLoading = false;
+  renderWeather();
+}
+
+function openWeatherDetails() {
+  renderWeather();
+  openDialog(elements.weatherDialog);
+}
+
+function openTravelDetails() {
+  if (!isTraveling(state.travel)) return;
+  const destination = destinationById(state.travel.destinationId);
+  $("#travel-dialog-kind").textContent = `${destination.kind} · REISEPOST`;
+  $("#travel-dialog-title").textContent = destination.title;
+  $("#travel-dialog-place").textContent = destination.place;
+  $("#travel-dialog-icon").textContent = destination.icon;
+  $("#travel-dialog-doing").textContent = `${state.name} ${destination.doing}.`;
+  $("#travel-dialog-fact").textContent = destination.fact;
+  $("#travel-dialog-countdown").textContent = travelTimeLabel(state.travel);
+  $("#travel-progress-fill").style.setProperty("--value", `${travelProgress(state.travel)}%`);
+  $("#travel-illustration").dataset.palette = destination.palette;
+  $("#travel-history").textContent = `${state.name} hat bereits ${state.travel.completedTrips} ${state.travel.completedTrips === 1 ? "Solo-Reise" : "Solo-Reisen"} beendet und ${state.travel.visitedIds.length} verschiedene Orte entdeckt.`;
+  openDialog(elements.travelDialog);
+}
+
+function selectLandscapeArea(area) {
+  if (isTraveling(state.travel) || state.sleeping || interactionBusy || !["home", "meadow", "garden"].includes(area)) return;
+  state.landscapeArea = area;
+  const phrases = {
+    home: "Zuhause! Meine Hütte riecht nach Holz und mein Teich nach einem sehr guten Nachmittag.",
+    meadow: "Schau, die Damhirsche sind da. Ich beobachte sie immer ganz leise.",
+    garden: "Willkommen im Gurkengarten! Vielleicht läuft gleich unser kleines Huhn vorbei.",
+  };
+  talk(phrases[area], { speak: false });
+  render();
+}
+
 function scheduleQuestWake(now = Date.now()) {
   window.clearTimeout(questWakeTimer);
   questWakeTimer = 0;
@@ -183,7 +318,7 @@ function renderQuestIndicator(now = Date.now()) {
     return;
   }
   const quest = currentQuest(state.questProgress);
-  const due = questIsDue(state.questProgress, now);
+  const due = questIsDue(state.questProgress, now) && !isTraveling(state.travel, now);
   elements.questAlert.hidden = !due;
   elements.questBadge.hidden = !due;
   if (quest) $("#quest-alert-title").textContent = quest.title;
@@ -272,6 +407,11 @@ function openQuestBoard() {
 }
 
 function startQuestById(id) {
+  if (isTraveling(state.travel)) {
+    const destination = destinationById(state.travel.destinationId);
+    showToast(`${state.name} ist gerade in ${destination?.title || "der Ferne"}. Die Quest wartet.`);
+    return;
+  }
   if (state.sleeping) {
     showToast(`Weck ${state.name} zuerst ganz sanft auf.`);
     return;
@@ -374,6 +514,7 @@ function buildPixelCapy() {
 
 function render(now = Date.now()) {
   state = advanceState(state, now);
+  const traveling = syncTravelState(now);
   if (hasStoredState) state.questProgress = normalizeQuestProgress(state.questProgress, state.adoptedAt, now, `${activePetId}:${state.name}`);
   const mood = moodFor(state);
   const level = levelInfo(state.xp);
@@ -392,7 +533,9 @@ function render(now = Date.now()) {
   elements.level.textContent = `LV. ${level.level}`;
   elements.xp.style.setProperty("--value", `${level.progress}%`);
   elements.mood.className = `mood mood-${mood.tone}`;
-  elements.mood.innerHTML = `<span aria-hidden="true">${state.sleeping ? "☾" : "♥"}</span> ${mood.label}`;
+  elements.mood.innerHTML = traveling
+    ? '<span aria-hidden="true">⌁</span> AUF REISEN'
+    : `<span aria-hidden="true">${state.sleeping ? "☾" : "♥"}</span> ${mood.label}`;
   elements.speech.textContent = currentPhrase;
 
   for (const key of NEED_KEYS) {
@@ -408,8 +551,11 @@ function render(now = Date.now()) {
   elements.sleepLabel.textContent = state.sleeping ? "WECKEN" : "SCHLAFEN";
   elements.sleepAction.querySelector("small").textContent = state.sleeping ? "Guten Morgen" : "Licht aus";
   $$('button[data-action]:not([data-action="sleep"])', elements.actions).forEach((button) => {
-    button.disabled = state.sleeping || interactionBusy;
+    button.disabled = state.sleeping || interactionBusy || traveling;
   });
+  elements.sleepAction.disabled = interactionBusy || traveling;
+  renderLandscape(now, traveling);
+  renderWeather();
   renderQuestIndicator(now);
   saveState();
 }
@@ -435,7 +581,11 @@ function playSound(kind = "happy") {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     audioContext ||= new AudioContext();
-    const notes = kind === "sleep" ? [330, 262] : kind === "splash" ? [392, 523, 392] : kind === "tap" ? [440] : [523, 659];
+    const notes = kind === "sleep" ? [330, 262]
+      : kind === "splash" ? [392, 523, 392]
+        : kind === "sad" ? [330, 247, 196]
+          : kind === "tap" ? [440]
+            : [523, 659];
     notes.forEach((frequency, index) => {
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
@@ -492,7 +642,7 @@ function remember(text, icon) {
   state = addMemory(state, text, icon);
 }
 
-function finishInteraction(changes, phrase, memory, icon = "♥") {
+function finishInteraction(changes, phrase, memory, icon = "♥", reaction = "happy") {
   state = applyChanges(state, changes);
   remember(memory, icon);
   const questCompletion = trackQuestAction();
@@ -500,13 +650,19 @@ function finishInteraction(changes, phrase, memory, icon = "♥") {
   talk(questCompletion
     ? `Geschafft! „${questCompletion.quest.title}“ war richtig schön mit dir. Schau, wie viel es glitzert!`
     : phrase);
-  playSound("happy");
-  haptic(questCompletion ? [18, 25, 18, 25, 30] : [18, 30, 18]);
-  if (questCompletion) animateCapy("is-loved", 1700);
+  playSound(questCompletion || reaction !== "hate" ? "happy" : "sad");
+  haptic(questCompletion ? [18, 25, 18, 25, 30] : reaction === "hate" ? [40, 22, 40] : [18, 30, 18]);
+  if (questCompletion || reaction === "love") animateCapy("is-loved", 1700);
+  else if (reaction === "hate") animateCapy("is-disgusted", 1900);
   render();
 }
 
 function openTray(category) {
+  if (isTraveling(state.travel)) {
+    const destination = destinationById(state.travel.destinationId);
+    showToast(`${state.name} ist gerade in ${destination?.title || "der Ferne"}.`);
+    return;
+  }
   if (state.sleeping || interactionBusy) return;
   const group = GROUPS[category];
   if (!group) return;
@@ -514,15 +670,20 @@ function openTray(category) {
   selectedItem = null;
   elements.trayKicker.textContent = group.kicker;
   elements.trayTitle.textContent = group.title.replace("{name}", state.name);
-  elements.trayInstruction.textContent = group.instruction;
+  elements.trayInstruction.textContent = category === "feed"
+    ? `${group.instruction} Seltene Markt-Snacks tauchen nur zeitweise auf.`
+    : group.instruction;
   elements.trayProgress.hidden = true;
   elements.trayProgress.querySelector("span").style.width = "0%";
   elements.trayItems.replaceChildren();
 
+  const questId = state.questProgress?.activeId || "";
   for (const [key, item] of Object.entries(group.items)) {
+    const availability = category === "feed" ? foodAvailability(key, state, Date.now(), questId) : { available: true };
+    if (!availability.available) continue;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "tray-item";
+    button.className = `tray-item${item.temporary ? " is-limited" : ""}`;
     button.dataset.category = category;
     button.dataset.key = key;
     button.setAttribute("aria-label", `${item.label}: ${item.detail}. Ziehen oder auswählen.`);
@@ -530,6 +691,12 @@ function openTray(category) {
     const text = document.createElement("span");
     text.innerHTML = `<strong>${item.label}</strong><small>${item.detail}</small>`;
     button.append(text);
+    if (item.temporary) {
+      const badge = document.createElement("em");
+      badge.className = "tray-item-badge";
+      badge.textContent = availability.reason || "NUR KURZ DA";
+      button.append(badge);
+    }
     elements.trayItems.append(button);
   }
 
@@ -584,7 +751,7 @@ function showDragGhost(clientX, clientY, key) {
 
 function startDrag(event) {
   const button = event.target.closest(".tray-item");
-  if (!button || interactionBusy || state.sleeping) return;
+  if (!button || interactionBusy || state.sleeping || isTraveling(state.travel)) return;
   event.preventDefault();
   selectItem(button.dataset.category, button.dataset.key);
   drag = {
@@ -671,9 +838,17 @@ function endDrag(event) {
 }
 
 async function performItem(category, key, clientPoint) {
-  if (interactionBusy || state.sleeping) return;
+  if (interactionBusy || state.sleeping || isTraveling(state.travel)) return;
   const item = GROUPS[category]?.items[key];
   if (!item) return;
+  if (category === "feed") {
+    const availability = foodAvailability(key, state, Date.now(), state.questProgress?.activeId || "");
+    if (!availability.available) {
+      showToast(`${item.label} ist gerade nicht mehr auf dem Markt.`);
+      closeTray();
+      return;
+    }
+  }
   interactionBusy = true;
   pendingQuestAction = `${category}:${key}`;
   selectedItem = null;
@@ -697,11 +872,21 @@ async function feedAnimation(key, item) {
   const capyRect = elements.capy.getBoundingClientRect();
   const food = sceneObject(key, capyRect.right - habitatRect.left - 17, capyRect.top - habitatRect.top + capyRect.height * 0.57, "is-feeding");
   animateCapy("is-eating", 2100);
-  talk(`Oh! ${item.label}! Gib her …`, { speak: false });
+  talk(item.reaction === "hate" ? "Moment … ist das etwa eine Zwiebel?" : `Oh! ${item.label}! Gib her …`, { speak: false });
   playSound("tap");
   await wait(2100);
   food.remove();
-  finishInteraction(item, state.satiety + item.satiety > 112 ? "Puh, mein Bauch ist jetzt kugelrund!" : item.phrase, `${state.name} hat ${item.label} aus deiner Hand gefuttert.`, key === "melon" ? "🍉" : "●");
+  const memory = item.reaction === "hate"
+    ? `${state.name} hat mutig an einer Zwiebel probiert und sehr deutlich gezeigt, dass es sie hasst.`
+    : `${state.name} hat ${item.label} aus deiner Hand gefuttert.`;
+  const icon = key === "melon" ? "🍉" : key === "pickle" ? "▰" : key === "onion" ? "◉" : "●";
+  finishInteraction(
+    item,
+    item.reaction === "hate" ? item.phrase : state.satiety + item.satiety > 112 ? "Puh, mein Bauch ist jetzt kugelrund!" : item.phrase,
+    memory,
+    icon,
+    item.reaction,
+  );
 }
 
 async function fetchAnimation(key, item, clientPoint) {
@@ -897,6 +1082,10 @@ function performSelectedInHabitat(event) {
 
 function toggleSleep() {
   if (interactionBusy) return;
+  if (isTraveling(state.travel)) {
+    showToast(`${state.name} schläft heute erst nach der Rückkehr wieder in der Hütte.`);
+    return;
+  }
   closeTray();
   if (state.sleeping) {
     state = advanceState(state);
@@ -919,6 +1108,10 @@ function toggleSleep() {
 function petCapy(event) {
   event.stopPropagation();
   if (Date.now() < suppressClickUntil || interactionBusy) return;
+  if (isTraveling(state.travel)) {
+    openTravelDetails();
+    return;
+  }
   if (performSelectedOnCapy()) return;
   if (Date.now() - lastPetAt < 500) return;
   lastPetAt = Date.now();
@@ -957,6 +1150,7 @@ function formatDuration(milliseconds) {
 }
 
 function showAwayReport() {
+  if (isTraveling(state.travel)) return;
   if (!awayInfo || awayInfo.elapsedMs < 5 * 60_000) return;
   $("#away-title").textContent = `${state.name} hat auf dich gewartet`;
   $("#away-clock").textContent = formatDuration(awayInfo.elapsedMs);
@@ -1013,6 +1207,7 @@ function renderLibrary() {
   list.replaceChildren();
   library.profiles.forEach((profile) => {
     const preview = advanceState(profile.state);
+    const previewTravel = normalizeTravel(preview.travel, preview.adoptedAt, Date.now(), `${profile.id}:${preview.name}:${preview.adoptedAt}`);
     const mood = moodFor(preview);
     const card = document.createElement("article");
     card.className = `library-card${profile.id === activePetId ? " is-active" : ""}`;
@@ -1029,7 +1224,10 @@ function renderLibrary() {
     meta.textContent = `TAG ${dayNumber(preview)} · LV. ${levelInfo(preview.xp).level} · ${mood.label}`;
     const visit = document.createElement("span");
     const previewQuests = normalizeQuestProgress(preview.questProgress, preview.adoptedAt, Date.now(), `${profile.id}:${preview.name}`);
-    visit.textContent = `${profile.id === activePetId ? "Gerade bei dir" : relativeVisit(profile.lastPlayedAt)} · ✦ ${previewQuests.glitter}`;
+    const destination = isTraveling(previewTravel) ? destinationById(previewTravel.destinationId) : null;
+    visit.textContent = destination
+      ? `Unterwegs: ${destination.title} · ${travelTimeLabel(previewTravel)} · ✦ ${previewQuests.glitter}`
+      : `${profile.id === activePetId ? "Gerade bei dir" : relativeVisit(profile.lastPlayedAt)} · ✦ ${previewQuests.glitter}`;
     info.append(name, meta, visit);
 
     const actions = document.createElement("div");
@@ -1069,6 +1267,7 @@ function resetSceneForSwitch() {
   activeGameCleanup = null;
   if (elements.questGameDialog.open) elements.questGameDialog.close();
   if (elements.questDialog.open) elements.questDialog.close();
+  if (elements.travelDialog.open) elements.travelDialog.close();
   closeTray();
   if (bubbleSession) window.clearTimeout(bubbleSession.timer);
   bubbleSession = null;
@@ -1168,6 +1367,7 @@ function syncSettingsForm() {
 
 buildPixelCapy();
 render();
+refreshWeather();
 
 if (!hasStoredState) {
   prepareAdoption("first");
@@ -1211,6 +1411,25 @@ $("#quest-button").addEventListener("click", openQuestBoard);
 elements.questAlert.addEventListener("click", openQuestBoard);
 $("#journal-button").addEventListener("click", () => { renderJournal(); openDialog(elements.journalDialog); });
 $("#settings-button").addEventListener("click", () => { syncSettingsForm(); openDialog(elements.settingsDialog); });
+$("#weather-button").addEventListener("click", openWeatherDetails);
+elements.travelPostcard.addEventListener("click", openTravelDetails);
+
+$("#world-navigation").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-area]");
+  if (button) selectLandscapeArea(button.dataset.area);
+});
+
+elements.habitat.addEventListener("click", (event) => {
+  const landmark = event.target.closest("button[data-landmark]");
+  if (!landmark || isTraveling(state.travel)) return;
+  if (landmark.dataset.landmark === "cabin") {
+    talk(state.sleeping
+      ? "Pssst … hier schlafe ich gerade ganz warm und sicher."
+      : "Das ist meine Hütte. Abends rolle ich mich dort ein – mit dem Schlafen-Knopf bringst du mich hinein.", { speak: false });
+  } else {
+    talk("Mein Gurkengarten! Manchmal bringt der Markt daraus eine geliebte Gewürzgurke mit.", { speak: false });
+  }
+});
 
 $("#dedication-next").addEventListener("click", () => {
   elements.dedicationDialog.close();
@@ -1306,7 +1525,10 @@ window.addEventListener("beforeinstallprompt", (event) => {
   $("#install-help-button").textContent = "APP INSTALLIEREN";
 });
 
-window.addEventListener("online", () => showToast("Wieder online – dein Capy ist bereit."));
+window.addEventListener("online", () => {
+  showToast("Wieder online – Wetter und Capy sind bereit.");
+  refreshWeather(true);
+});
 window.addEventListener("offline", () => showToast("Offline-Modus – dein Spielstand bleibt erhalten."));
 window.addEventListener("pagehide", saveState);
 document.addEventListener("visibilitychange", () => {
@@ -1314,19 +1536,20 @@ document.addEventListener("visibilitychange", () => {
     const report = absenceReport(state);
     state = report.state;
     currentPhrase = statusPhrase(state);
+    render();
     if (report.elapsedMs >= 5 * 60_000) {
       awayInfo = report;
       showAwayReport();
     }
-    render();
   } else {
     saveState();
   }
 });
 
 window.setInterval(() => render(), 30_000);
+window.setInterval(() => refreshWeather(true), 30 * 60_000);
 window.setInterval(() => {
-  if (!state.sleeping && !interactionBusy && !document.hidden) {
+  if (!state.sleeping && !interactionBusy && !document.hidden && !isTraveling(state.travel)) {
     currentPhrase = statusPhrase(state);
     elements.speech.textContent = currentPhrase;
   }

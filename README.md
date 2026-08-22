@@ -15,6 +15,11 @@ Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Brows
 - Streicheln per Tipp auf das Capybara
 - Deutsche Sprachausgabe, Pixel-Töne und optionale Haptik
 - Level, Stimmung und sechs fortlaufende Bedürfnisse
+- Ein sichtbar wachsendes, feineres 56 × 34-Pixel-Capy mit vier Wachstumsstufen
+- Eine große, wiedererkennbare Landschaft mit Schlafhütte, Teich, Wildwiese, Damwild-Gehege, Gurkengarten und einem umherlaufenden Huhn
+- Selbstständige zwei- bis dreistündige Solo-Reisen zu echten und fantastischen Orten – inklusive anklickbarer Reisepostkarte, Ortswissen und Mitbringsel
+- Ungefähres Live-Wetter für Deutschland aus Hamburg, Berlin, Frankfurt und München mit jahreszeitlichem Offline-Fallback
+- Zeitweise Markt-Snacks: geliebte Gewürzgurken und ausdrücklich gehasste Zwiebeln mit eigenen sichtbaren Reaktionen
 - Tagebuch mit gemeinsamen Erinnerungen
 - „Während du weg warst“-Bericht beim Wiederöffnen
 - Mehrere Capys in einer Bibliothek anlegen und jederzeit zwischen ihren getrennten Spielständen wechseln
@@ -45,4 +50,4 @@ Die eigenständige GitHub-Pages-App liegt in `public/capygotchi`. Der Workflow u
 
 ## Datenschutz
 
-Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte, Quests und die gesamte Capy-Bibliothek verlassen das Gerät nicht. Bestehende Spielstände werden bei neuen Versionen migriert und nicht mehr zurückgesetzt.
+Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte, Quests, Reisen und die gesamte Capy-Bibliothek bleiben lokal auf dem Gerät. Nur für die Landschaft fragt die App ohne Standortfreigabe einen ungefähren Deutschland-Mittelwert bei [Open-Meteo](https://open-meteo.com/) ab. Bestehende Spielstände werden bei neuen Versionen migriert und nicht mehr zurückgesetzt.
