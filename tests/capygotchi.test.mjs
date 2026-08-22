@@ -7,6 +7,8 @@ import {
   advanceState,
   applyChanges,
   cleanName,
+  foodAvailability,
+  growthFor,
   levelInfo,
   makeState,
   moodFor,
@@ -36,6 +38,14 @@ import {
   recordQuestAction,
   taskQuestComplete,
 } from "../public/capygotchi/quest-core.js";
+import {
+  TRAVEL_DESTINATIONS,
+  destinationById,
+  isTraveling,
+  normalizeTravel,
+  travelProgress,
+} from "../public/capygotchi/travel-core.js";
+import { fallbackGermanyWeather, weatherFromApi } from "../public/capygotchi/weather.js";
 
 test("six needs continue changing while the app is closed", () => {
   const start = Date.UTC(2026, 7, 21, 12);
@@ -69,7 +79,7 @@ test("absence report explains offline progress without killing the pet", () => {
   assert.equal(report.elapsedMs, 6 * 3_600_000);
   assert.ok(report.changes.satiety < 0);
   assert.ok(report.state.satiety >= 0);
-  assert.equal(report.state.version, 4);
+  assert.equal(report.state.version, 5);
 });
 
 test("interactions stay within healthy stat limits", () => {
@@ -88,7 +98,7 @@ test("pet state remains valid, names stay compact, and Emmi is the default", () 
   assert.ok(state.name.length <= 14);
   assert.equal(state.satiety, 100);
   assert.equal(state.fun, 0);
-  assert.equal(state.version, 4);
+  assert.equal(state.version, 5);
   assert.equal(state.social, 84);
   assert.equal(makeState(1).name, "Emmi");
   assert.equal(makeState(1, "Goldie", "golden").furVariant, "golden");
@@ -125,12 +135,64 @@ test("mood, level, memories, and situation-aware phrases respond to care", () =>
 });
 
 test("the finer capybara uses a consistent image-free pixel grid", () => {
-  assert.equal(CAPY_WIDTH, 42);
-  assert.equal(CAPY_HEIGHT, 26);
+  assert.equal(CAPY_WIDTH, 56);
+  assert.equal(CAPY_HEIGHT, 34);
   assert.equal(CAPY_PIXELS.length, CAPY_HEIGHT);
   assert.ok(CAPY_PIXELS.every((row) => row.length === CAPY_WIDTH));
   assert.ok(CAPY_PIXELS.join("").includes("e"));
   assert.ok(CAPY_PIXELS.join("").includes("b"));
+  assert.ok(CAPY_PIXELS.join("").includes("h"));
+});
+
+test("growth follows levels without changing the saved pet identity", () => {
+  assert.equal(growthFor({ ...makeState(1, "Emmi"), xp: 0 }).id, "baby");
+  assert.equal(growthFor({ ...makeState(1, "Emmi"), xp: 22 * 5 ** 2 }).id, "grown");
+  assert.equal(growthFor({ ...makeState(1, "Emmi"), xp: 22 * 9 ** 2 }).id, "majestic");
+});
+
+test("pickles and onions are temporary foods with opposite emotional effects", () => {
+  const state = makeState(Date.UTC(2026, 7, 22, 12), "Emmi");
+  const forcedPickle = foodAvailability("pickle", state, state.adoptedAt, "pickle-picnic");
+  assert.equal(forcedPickle.available, true);
+  assert.equal(forcedPickle.limited, true);
+  const windows = Array.from({ length: 16 }, (_, index) => foodAvailability("onion", state, state.adoptedAt + index * 90 * 60_000));
+  assert.ok(windows.some((entry) => entry.available));
+  assert.ok(windows.some((entry) => !entry.available));
+  const pickle = applyChanges(state, { satiety: 9, fun: 13 });
+  const onion = applyChanges(state, { satiety: 2, fun: -18 });
+  assert.ok(pickle.fun > state.fun);
+  assert.ok(onion.fun < state.fun);
+});
+
+test("solo trips are deterministic, last two to three hours, and return with a souvenir", () => {
+  const adoptedAt = Date.UTC(2026, 7, 1, 9);
+  const seed = "emmi:reise";
+  let travel = normalizeTravel(null, adoptedAt, adoptedAt, seed);
+  const departure = travel.nextDepartureAt;
+  travel = normalizeTravel(travel, adoptedAt, departure + 1, seed);
+  assert.equal(isTraveling(travel, departure + 1), true);
+  assert.ok(travel.returnsAt - travel.departedAt >= 120 * 60_000);
+  assert.ok(travel.returnsAt - travel.departedAt <= 180 * 60_000);
+  assert.ok(destinationById(travel.destinationId));
+  assert.ok(travelProgress(travel, departure + 1) < 1);
+  travel = normalizeTravel(travel, adoptedAt, travel.returnsAt + 1, seed);
+  assert.equal(isTraveling(travel, travel.returnsAt + 1), false);
+  assert.equal(travel.completedTrips, 1);
+  assert.ok(travel.lastSouvenir);
+  assert.ok(TRAVEL_DESTINATIONS.length >= 8);
+});
+
+test("Germany weather averages four places and has a reliable offline season fallback", () => {
+  const payload = [10, 14, 18, 22].map((temperature, index) => ({
+    current: { temperature_2m: temperature, precipitation: index === 0 ? 0.8 : 0, weather_code: index === 0 ? 61 : 2, cloud_cover: 50, is_day: 1 },
+  }));
+  const weather = weatherFromApi(payload, 123);
+  assert.equal(weather.temperature, 16);
+  assert.equal(weather.kind, "rain");
+  assert.equal(weather.source, "live");
+  const fallback = fallbackGermanyWeather(Date.UTC(2026, 0, 15, 12));
+  assert.equal(fallback.source, "offline");
+  assert.ok(Number.isFinite(fallback.temperature));
 });
 
 test("dialogues offer multiple two-step conversations and adapt to needs", () => {
@@ -186,7 +248,7 @@ test("state migration preserves Capys and adds quest progress without a reset", 
   const quests = normalizeQuestProgress(migrated.questProgress, migrated.adoptedAt, now, "Lotti");
   assert.equal(migrated.name, "Lotti");
   assert.equal(migrated.xp, 77);
-  assert.equal(migrated.version, 4);
+  assert.equal(migrated.version, 5);
   assert.equal(quests.nextAt, migrated.adoptedAt + 60_000);
   assert.equal(questIsDue(quests, now), true);
 });
@@ -208,6 +270,10 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(html, /quest-dialog/);
   assert.match(html, /quest-game-dialog/);
   assert.match(html, /quest-alert/);
+  assert.match(html, /travel-dialog/);
+  assert.match(html, /weather-dialog/);
+  assert.match(html, /world-navigation/);
+  assert.match(html, /DAMWILD-GEHEGE/);
   assert.match(html, /NEUES CAPY ERWECKEN/);
   assert.match(html, /value="golden"/);
   assert.doesNotMatch(html, /<(img|svg)\b/i);
@@ -219,10 +285,15 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(app, /normalizeQuestProgress/);
   assert.match(app, /startQuestGame/);
   assert.match(app, /switchToPet/);
+  assert.match(app, /normalizeTravel/);
+  assert.match(app, /foodAvailability/);
+  assert.match(app, /loadGermanyWeather/);
   assert.equal(JSON.parse(manifest).display, "standalone");
-  assert.match(serviceWorker, /capygotchi-v6/);
+  assert.match(serviceWorker, /capygotchi-v7/);
   assert.match(serviceWorker, /dialogues\.js/);
   assert.match(serviceWorker, /pet-library\.js/);
   assert.match(serviceWorker, /quest-core\.js/);
   assert.match(serviceWorker, /quest-games\.js/);
+  assert.match(serviceWorker, /travel-core\.js/);
+  assert.match(serviceWorker, /weather\.js/);
 });
