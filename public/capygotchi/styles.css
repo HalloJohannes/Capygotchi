@@ -392,6 +392,138 @@ dialog::backdrop { background: rgb(32 26 23 / 58%); backdrop-filter: blur(2px); 
 @keyframes grill-wrong { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
 @keyframes route-wrong { 50% { transform: rotate(12deg); } }
 
+/* Große, wiedererkennbare Capy-Landschaft */
+.habitat { height: 490px; background: linear-gradient(#85cedd 0 61%, #b8d993 61% 78%, #79ad57 78%); }
+.habitat[data-area="meadow"] { background: linear-gradient(#8bcfdf 0 55%, #c6dda0 55% 70%, #8bb85d 70%); }
+.habitat[data-area="garden"] { background: linear-gradient(#87cad9 0 57%, #d5dc99 57% 72%, #7cab55 72%); }
+.habitat[data-period="dusk"][data-area] { background: linear-gradient(#e6a47b 0 55%, #c1a792 55% 70%, #789d58 70%); }
+.habitat[data-period="night"][data-area] { background: linear-gradient(#263d66 0 59%, #596c67 59% 72%, #4f754f 72%); }
+.speech { top: 14px; max-width: calc(100% - 116px); }
+.quest-alert { top: 124px; }
+.weather-chip { position: absolute; z-index: 27; right: 10px; top: 78px; width: 88px; min-height: 43px; display: grid; grid-template-columns: 24px 1fr; grid-template-rows: 1fr 1fr; align-items: center; padding: 4px 6px; border: 2px solid var(--ink); background: rgb(255 248 233 / 92%); box-shadow: 3px 3px var(--ink); }
+.weather-chip > span { grid-row: 1 / 3; font-size: 21px; font-weight: 900; }
+.weather-chip strong { align-self: end; font-size: 12px; }
+.weather-chip small { align-self: start; color: #6f6058; font-size: 6px; font-weight: 900; }
+.area-name { position: absolute; z-index: 18; left: 10px; top: 86px; padding: 6px 8px; border: 2px solid var(--ink); background: rgb(255 248 233 / 86%); color: #4f6146; font-size: 7px; font-weight: 900; letter-spacing: .12em; box-shadow: 3px 3px rgb(43 33 29 / 20%); }
+.landscape-scenery { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.distant-hill { position: absolute; z-index: -1; bottom: 100px; width: 220px; height: 105px; border-radius: 55% 55% 0 0; background: #79aa70; opacity: .82; }
+.hill-one { left: -70px; }.hill-two { right: -85px; width: 280px; height: 130px; background: #6f9f6b; }
+.habitat[data-area="garden"] .hill-one { background: #b3a76c; }.habitat[data-area="meadow"] .hill-two { background: #88a77a; }
+.landmark { position: absolute; z-index: 3; display: none; padding: 0; border: 0; background: transparent; pointer-events: auto; }
+.landmark small, .deer-pen small { position: absolute; left: 50%; bottom: -18px; width: max-content; padding: 3px 5px; transform: translateX(-50%); border: 1px solid var(--ink); background: rgb(255 248 233 / 84%); font-size: 6px; font-weight: 900; }
+.habitat[data-area="home"] .cabin { display: block; }
+.cabin { left: 18px; bottom: 99px; width: 112px; height: 92px; border: 4px solid var(--ink); background: repeating-linear-gradient(0deg, #a66b3f 0 12px, #b97c48 12px 24px); box-shadow: 6px 6px rgb(43 33 29 / 22%); }
+.cabin-roof { position: absolute; left: -12px; top: -36px; width: 130px; height: 42px; border: 4px solid var(--ink); background: repeating-linear-gradient(90deg, #6d4935 0 13px, #7d5339 13px 26px); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.cabin-window { position: absolute; left: 14px; top: 25px; width: 29px; height: 27px; border: 3px solid var(--ink); background: #9ed7df; box-shadow: inset 11px 0 rgb(255 255 255 / 25%); }
+.cabin-window::before { content: ""; position: absolute; inset: 11px 0 auto; height: 3px; background: var(--ink); }
+.cabin-door { position: absolute; right: 14px; bottom: 0; width: 35px; height: 57px; border: 3px solid var(--ink); border-bottom: 0; background: #704832; }
+.cabin-door::after { content: ""; position: absolute; right: 5px; top: 28px; width: 5px; height: 5px; background: var(--gold); }
+.habitat.is-sleeping .cabin-window { background: #ffd970; box-shadow: 7px 10px #2b211d, 18px 10px #2b211d; }
+.habitat.is-sleeping .pet-button { opacity: 0; pointer-events: none; }
+.deer-pen { position: absolute; display: none; left: 14px; right: 14px; bottom: 100px; height: 145px; border-bottom: 7px solid #6f5038; pointer-events: none; }
+.habitat[data-area="meadow"] .deer-pen { display: block; }
+.fence { position: absolute; inset: 35px 0 0; background: repeating-linear-gradient(90deg, transparent 0 40px, #735238 40px 47px), linear-gradient(transparent 45%, #735238 46% 51%, transparent 52% 70%, #735238 71% 76%, transparent 77%); opacity: .75; }
+.pixel-deer { position: absolute; left: 18%; bottom: 20px; width: 68px; height: 36px; border: 3px solid var(--ink); background: #a87548; box-shadow: inset 13px 0 #c49565; }
+.pixel-deer::before { content: ""; position: absolute; right: -21px; top: -27px; width: 29px; height: 39px; border: 3px solid var(--ink); background: #ae7a4c; box-shadow: 7px -9px 0 -2px #754a32, 17px -13px 0 -4px #754a32; }
+.pixel-deer::after { content: ""; position: absolute; left: 8px; bottom: -28px; width: 7px; height: 28px; background: var(--ink); box-shadow: 42px 0 var(--ink), 78px -22px 0 -1px var(--ink); }
+.deer-two { left: 61%; bottom: 47px; transform: scale(.72); opacity: .82; }
+.garden-shed { right: 25px; bottom: 102px; width: 105px; height: 100px; border: 4px solid var(--ink); background: #e1c66e; box-shadow: 6px 6px rgb(43 33 29 / 20%); }
+.garden-shed > span { position: absolute; inset: -24px -9px auto; height: 31px; border: 4px solid var(--ink); background: #4e8151; transform: skewX(-16deg); }
+.garden-shed::before { content: ""; position: absolute; left: -165px; bottom: -5px; width: 142px; height: 55px; border: 4px solid var(--ink); background: repeating-linear-gradient(90deg, #4f8a4f 0 12px, #6ba85c 12px 24px); box-shadow: inset 0 15px #8ec36f; }
+.garden-shed::after { content: "▰  ▰  ▰"; position: absolute; left: -153px; bottom: 18px; color: #d7ef74; font-size: 16px; letter-spacing: 13px; text-shadow: 2px 2px var(--ink); }
+.habitat[data-area="garden"] .garden-shed { display: block; }
+.pixel-chicken { position: absolute; z-index: 7; display: none; left: -45px; bottom: 104px; width: 30px; height: 27px; border: 3px solid var(--ink); background: #fff8df; box-shadow: 8px -7px 0 -3px #e95448; animation: chicken-cross 15s steps(18, end) infinite; }
+.pixel-chicken::before { content: ""; position: absolute; right: -15px; top: 4px; width: 15px; height: 15px; border: 3px solid var(--ink); background: #fff8df; box-shadow: 7px 4px 0 -3px #e5a02f; }
+.pixel-chicken::after { content: ""; position: absolute; left: 7px; bottom: -10px; width: 4px; height: 10px; background: var(--ink); box-shadow: 14px 0 var(--ink); }
+.habitat[data-area="garden"] .pixel-chicken { display: block; }
+.ground { height: 83px; border-top-width: 10px; }
+.habitat[data-area="meadow"] .ground { background: repeating-linear-gradient(90deg, #77aa51 0 13px, #8abd5c 13px 26px); }
+.habitat[data-area="garden"] .ground { background: repeating-linear-gradient(90deg, #7a9e4f 0 14px, #8eb45b 14px 28px); }
+.water { width: 175px; height: 52px; }
+.habitat:not([data-area="home"]) .water, .habitat:not([data-area="home"]) .reed { display: none; }
+.world-navigation { position: absolute; z-index: 35; left: 50%; bottom: 8px; width: min(88%, 370px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; transform: translateX(-50%); }
+.world-navigation button { min-width: 0; height: 39px; padding: 3px 2px; border: 2px solid var(--ink); background: rgb(255 248 233 / 91%); font-size: 7px; font-weight: 900; box-shadow: 2px 2px var(--ink); }
+.world-navigation span { margin-right: 3px; font-size: 13px; }
+.world-navigation button.is-active { transform: translate(1px, 1px); background: #dff0b7; box-shadow: 0 0 var(--ink); }
+.pet-button { left: var(--pet-x, 54%); bottom: 63px; width: 380px; height: 270px; transition: left 1.4s steps(7, end), opacity .25s; }
+.pixel-capy { --px: 4.4px; bottom: 19px; }
+.pet-button[data-growth="baby"] .pixel-capy { --px: 3.95px; }
+.pet-button[data-growth="young"] .pixel-capy { --px: 4.25px; }
+.pet-button[data-growth="grown"] .pixel-capy { --px: 4.55px; }
+.pet-button[data-growth="majestic"] .pixel-capy { --px: 4.8px; }
+.pet-shadow { bottom: 7px; width: 250px; }
+.pixel-h { background: #d9a36b; }.pixel-r { background: #d99775; }
+.growth-label { width: max-content; margin-top: 5px; padding: 3px 5px; background: #e8f0df; color: #4d6747; font-size: 7px; font-weight: 900; letter-spacing: .07em; }
+.drop-hint { top: 170px; }
+
+/* Wettereffekte */
+.weather-fx { position: absolute; inset: 0; z-index: 16; overflow: hidden; pointer-events: none; }
+.weather-fx i { display: none; position: absolute; left: calc((var(--i, 1) * 8%) - 3%); top: -25px; }
+.weather-fx i:nth-child(1) { --i: 1; }.weather-fx i:nth-child(2) { --i: 2; }.weather-fx i:nth-child(3) { --i: 3; }.weather-fx i:nth-child(4) { --i: 4; }.weather-fx i:nth-child(5) { --i: 5; }.weather-fx i:nth-child(6) { --i: 6; }.weather-fx i:nth-child(7) { --i: 7; }.weather-fx i:nth-child(8) { --i: 8; }.weather-fx i:nth-child(9) { --i: 9; }.weather-fx i:nth-child(10) { --i: 10; }.weather-fx i:nth-child(11) { --i: 11; }.weather-fx i:nth-child(12) { --i: 12; }
+.habitat[data-weather="rain"] .weather-fx i, .habitat[data-weather="storm"] .weather-fx i { display: block; width: 3px; height: 28px; background: #c9f2f3; animation: rain-fall 1.1s calc(var(--i) * -.13s) linear infinite; }
+.habitat[data-weather="snow"] .weather-fx i { display: block; width: 8px; height: 8px; background: #fff; box-shadow: 4px 4px #d9eef0; animation: snow-fall 3.8s calc(var(--i) * -.23s) steps(12, end) infinite; }
+.habitat[data-weather="cloud"] .sun, .habitat[data-weather="rain"] .sun, .habitat[data-weather="storm"] .sun, .habitat[data-weather="fog"] .sun { opacity: .18; }
+.habitat[data-weather="cloud"] .cloud, .habitat[data-weather="rain"] .cloud, .habitat[data-weather="storm"] .cloud { transform: scale(1.25); filter: grayscale(.5); }
+.habitat[data-weather="storm"] { filter: saturate(.72); }
+.habitat[data-weather="fog"]::before { content: ""; position: absolute; z-index: 15; inset: 130px 0 75px; background: repeating-linear-gradient(0deg, rgb(239 244 230 / 35%) 0 13px, transparent 13px 27px); pointer-events: none; }
+
+/* Solo-Reisen */
+.habitat.is-away .pet-button, .habitat.is-away .landscape-scenery, .habitat.is-away .drop-hint, .habitat.is-away .quest-alert { opacity: 0; pointer-events: none; }
+.habitat.is-away .world-navigation { display: none; }
+.habitat.is-away .ground { height: 110px; background: repeating-linear-gradient(45deg, #6e8464 0 16px, #80966f 16px 32px); }
+.travel-postcard { position: absolute; z-index: 34; left: 50%; top: 145px; width: min(88%, 380px); min-height: 220px; display: grid; grid-template-columns: 72px 1fr; align-content: center; gap: 13px; padding: 22px 18px; transform: translateX(-50%) rotate(-1deg); border: 4px solid var(--ink); background: repeating-linear-gradient(0deg, #fff8e9 0 28px, #f2e4ca 28px 30px); box-shadow: 9px 9px var(--ink); text-align: left; }
+.travel-postcard::before { content: "REISEPOST"; position: absolute; right: 14px; top: 13px; padding: 5px; border: 2px dashed #a45e54; color: #a45e54; font-size: 7px; font-weight: 900; transform: rotate(3deg); }
+.travel-stamp { width: 68px; height: 68px; display: grid; place-items: center; border: 4px double var(--ink); background: #ddd1f1; font-size: 31px; text-shadow: 3px 3px #fff; }
+.travel-postcard span:not(.travel-stamp) { min-width: 0; }
+.travel-postcard small, .travel-postcard strong, .travel-postcard em { display: block; }
+.travel-postcard small { color: #7a5d70; font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.travel-postcard strong { margin-top: 7px; font-size: 19px; line-height: 1.05; }
+.travel-postcard em { margin-top: 7px; color: #38634b; font-size: 9px; font-style: normal; font-weight: 900; }
+.travel-postcard > b { grid-column: 1 / -1; margin-top: 13px; padding: 10px; border: 2px solid var(--ink); background: var(--gold); font-size: 9px; text-align: center; }
+.travel-illustration { position: relative; height: 190px; overflow: hidden; border: 4px solid var(--ink); background: linear-gradient(#7fc8dc 0 63%, #6f9f65 63%); box-shadow: 6px 6px var(--ink); }
+.travel-illustration::before { content: ""; position: absolute; left: 8%; bottom: 22px; width: 84%; height: 69px; background: repeating-linear-gradient(90deg, #9c6a49 0 24px, #c68d5b 24px 48px); clip-path: polygon(0 100%, 8% 45%, 20% 70%, 32% 20%, 43% 63%, 55% 8%, 68% 54%, 80% 29%, 100% 100%); }
+.travel-illustration[data-palette="glitter"] { background: linear-gradient(#7c6db4, #d8a7df 65%, #577e72 65%); }
+.travel-illustration[data-palette="pickle"] { background: linear-gradient(#9fcf7a, #c7df8b 62%, #56874d 62%); }
+.travel-illustration[data-palette="coffee"] { background: linear-gradient(#d0ae88, #f0d8b0 64%, #866047 64%); }
+.travel-illustration[data-palette="harbor"] { background: linear-gradient(#82bac8 0 60%, #5aa0a8 60%); }
+.travel-illustration[data-palette="city"] { background: linear-gradient(#91c4d4 0 58%, #777a73 58%); }
+.travel-illustration[data-palette="alps"] { background: linear-gradient(#8ccadd 0 58%, #7b9c6e 58%); }
+.travel-illustration[data-palette="heath"] { background: linear-gradient(#9bcfd3 0 58%, #a47bad 58%); }
+.travel-illustration[data-palette="game"] { background: linear-gradient(#d9b4df 0 58%, #6c9b72 58%); }
+.travel-illustration i { position: absolute; width: 8px; height: 8px; background: #fff1a5; box-shadow: 8px 0 #fff1a5, 0 8px #fff1a5; animation: travel-sparkle 1.2s steps(3, end) infinite alternate; }
+.travel-illustration i:nth-child(2) { left: 15%; top: 18%; }.travel-illustration i:nth-child(3) { left: 72%; top: 23%; animation-delay: -.4s; }.travel-illustration i:nth-child(4) { left: 46%; top: 41%; animation-delay: -.8s; }.travel-illustration i:nth-child(5) { left: 85%; top: 52%; }
+.travel-capy-dot { position: absolute; z-index: 2; left: 50%; bottom: 32px; color: #a86f43; font-size: 54px; text-shadow: 6px 4px var(--fur-dark); }
+.travel-location { display: flex; align-items: center; gap: 10px; margin: 17px 0; padding: 11px; border: 2px solid var(--ink); background: #fff; }
+.travel-location > span { display: grid; place-items: center; width: 42px; height: 42px; background: #ead6f2; font-size: 20px; }
+.travel-location small, .travel-location strong { display: block; }.travel-location small { color: #77655b; font-size: 7px; }.travel-location strong { margin-top: 3px; font-size: 14px; }
+.travel-fact { padding: 13px; border: 3px solid var(--ink); background: #e2efd6; box-shadow: 4px 4px var(--ink); }
+.travel-fact strong, .travel-fact span { display: block; }.travel-fact strong { margin-bottom: 6px; color: var(--green); font-size: 8px; }.travel-fact span { font-family: ui-rounded, system-ui, sans-serif; font-size: 12px; line-height: 1.45; }
+.travel-progress { height: 13px; margin-top: 19px; border: 3px solid var(--ink); background: #d7c9b3; }.travel-progress span { display: block; width: var(--value, 0%); height: 100%; background: linear-gradient(90deg, #68a95f, #f2c45a); }
+.travel-return { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }.travel-return strong { font-size: 10px; }.travel-return small { max-width: 170px; color: #77655b; font-size: 8px; text-align: right; }
+.travel-history { margin-bottom: 0 !important; font-size: 10px !important; text-align: center; }
+
+/* Echtes Deutschland-Wetter */
+.weather-hero { display: flex; align-items: center; gap: 16px; padding: 17px; border: 3px solid var(--ink); background: linear-gradient(120deg, #ccecf0, #fff0b5); box-shadow: 5px 5px var(--ink); }
+.weather-hero > span { display: grid; place-items: center; width: 72px; height: 72px; border: 3px solid var(--ink); background: #fff; font-size: 38px; }.weather-hero strong, .weather-hero small { display: block; }.weather-hero strong { font-size: 17px; }.weather-hero small { margin-top: 6px; font-size: 12px; }
+.weather-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }.weather-metrics div { padding: 11px; border: 2px solid var(--ink); background: #fff; }.weather-metrics small, .weather-metrics strong { display: block; }.weather-metrics small { color: #77655b; font-size: 7px; }.weather-metrics strong { margin-top: 5px; font-size: 13px; }
+.weather-explanation { font-size: 11px !important; }.weather-credit { margin-bottom: 0 !important; font-size: 9px !important; text-align: center; }.weather-credit a { color: var(--green); font-weight: 900; }
+
+/* Seltene Snacks */
+.tray-items { grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); }
+.tray-item.is-limited { background: linear-gradient(135deg, #eff8d6, #fff1ab); }
+.tray-item-badge { display: block; width: max-content; margin: 4px auto -1px; padding: 2px 4px; background: #754e82; color: #fff; font-size: 6px; font-weight: 900; }
+.sprite-pickle { width: 17px; height: 38px; border: 3px solid var(--ink); border-radius: 10px; background: repeating-linear-gradient(0deg, #7db74f 0 8px, #5d9743 8px 16px); transform: rotate(24deg); box-shadow: inset 4px 0 #a8d66c; }
+.sprite-pickle::after { content: ""; position: absolute; left: 4px; top: 6px; width: 3px; height: 3px; background: #d9ed8c; box-shadow: 5px 9px #d9ed8c, -1px 20px #d9ed8c; }
+.sprite-onion { width: 31px; height: 30px; margin-top: 6px; border: 3px solid var(--ink); border-radius: 50% 50% 45% 45%; background: repeating-radial-gradient(circle at 50% 20%, #f0e7c8 0 4px, #d1b97a 5px 8px); }
+.sprite-onion::before { content: ""; position: absolute; left: 12px; top: -13px; width: 7px; height: 13px; background: #6f984a; box-shadow: 7px 2px #84aa55; transform: skewX(-18deg); }
+.pixel-capy.is-disgusted { animation: capy-disgust .28s steps(2, end) 7; filter: saturate(.55) hue-rotate(-18deg); }
+
+@keyframes chicken-cross { 0% { left: -45px; } 46% { left: 48%; } 50% { transform: translateY(-8px); } 100% { left: calc(100% + 45px); } }
+@keyframes rain-fall { to { transform: translate(-25px, 520px); } }
+@keyframes snow-fall { to { transform: translate(35px, 520px) rotate(180deg); } }
+@keyframes travel-sparkle { to { transform: scale(1.4) rotate(45deg); } }
+@keyframes capy-disgust { 25% { transform: translate(-53%, 1px) rotate(-3deg); } 75% { transform: translate(-47%, -1px) rotate(3deg); } }
+
 @media (max-width: 420px) {
   .topbar { padding-inline: 13px 10px; gap: 8px; }
   .topbar h1 { font-size: 23px; }
@@ -443,9 +575,12 @@ dialog::backdrop { background: rgb(32 26 23 / 58%); backdrop-filter: blur(2px); 
   .topbar h1 { font-size: 21px; }
   .header-actions { gap: 4px; }
   .header-actions .round-button { width: 33px; height: 33px; border-width: 2px; box-shadow: 2px 2px var(--ink); }
-  .habitat { height: 340px; }
-  .pixel-capy { --px: 5.15px; }
-  .pet-button { width: 300px; height: 210px; }
+  .habitat { height: 455px; }
+  .pet-button { width: 330px; height: 250px; }
+  .pet-button[data-growth="baby"] .pixel-capy { --px: 3.55px; }
+  .pet-button[data-growth="young"] .pixel-capy { --px: 3.8px; }
+  .pet-button[data-growth="grown"] .pixel-capy { --px: 4.05px; }
+  .pet-button[data-growth="majestic"] .pixel-capy { --px: 4.28px; }
   .need-grid { gap-inline: 8px; }
   .actions { gap: 4px; padding-inline: 6px; }
   .actions button { min-height: 72px; }
@@ -457,6 +592,8 @@ dialog::backdrop { background: rgb(32 26 23 / 58%); backdrop-filter: blur(2px); 
   .quest-card-icon { width: 37px; height: 37px; }
   .quest-card-action { min-width: 55px; font-size: 7px; }
   .quest-stage { min-height: 330px; }
+  .cabin { transform: scale(.86); transform-origin: 0 100%; }
+  .travel-postcard { top: 140px; min-height: 205px; }
 }
 
 @media (min-width: 700px) {
