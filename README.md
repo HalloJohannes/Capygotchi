@@ -16,8 +16,14 @@ Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Brows
 - Deutsche Sprachausgabe, Pixel-Töne und optionale Haptik
 - Level, Stimmung und sechs fortlaufende Bedürfnisse
 - Ein sichtbar wachsendes, feineres 56 × 34-Pixel-Capy mit vier Wachstumsstufen
-- Eine große, wiedererkennbare Landschaft mit Schlafhütte, Teich, Wildwiese, Damwild-Gehege, Gurkengarten und einem umherlaufenden Huhn
+- Eine große, wiedererkennbare Landschaft mit Schlafhütte, Teich, Wildwiese, Damwild-Gehege, Gemüsegarten und gemütlichem Wintergarten
+- Das Capy entscheidet selbst, ob es sich gerade an der Hütte, auf der Wildwiese, im Garten oder im Wintergarten aufhält
 - Selbstständige zwei- bis dreistündige Solo-Reisen zu echten und fantastischen Orten – inklusive anklickbarer Reisepostkarte, Ortswissen und Mitbringsel
+- Überraschungsreisen auf Wunsch: Du packst den Rucksack, das Capy sucht das Ziel selbst aus und kommt eigenständig zurück
+- Eine Sammlung mit 22 Reisefunden: exklusive Kleidungsplätze für Mütze, Brille, Schal, Oberteil und Pfoten sowie platzierbare Gegenstände für die Spielwelt
+- Milchaufschäumer, Gießkanne, Brettspiel, Picknickdecke, Radio und weitere Fundstücke werden in ihrem passenden Landschaftsbereich sichtbar
+- Vier Gemüsebeete mit Karotten, Tomaten, Gurken und Minikürbissen; Pflanzen wachsen auch bei geschlossener App weiter und die Ernte kann direkt verfüttert werden
+- Tierfreunde wie Hilda, Fips, Lotte, Piek, Wolke und Greta kommen zu Besuch und können ein Capy auf Reisen begleiten
 - Ungefähres Live-Wetter für Deutschland aus Hamburg, Berlin, Frankfurt und München mit jahreszeitlichem Offline-Fallback
 - Zeitweise Markt-Snacks: geliebte Gewürzgurken und ausdrücklich gehasste Zwiebeln mit eigenen sichtbaren Reaktionen
 - Tagebuch mit gemeinsamen Erinnerungen
@@ -50,4 +56,4 @@ Die eigenständige GitHub-Pages-App liegt in `public/capygotchi`. Der Workflow u
 
 ## Datenschutz
 
-Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte, Quests, Reisen und die gesamte Capy-Bibliothek bleiben lokal auf dem Gerät. Nur für die Landschaft fragt die App ohne Standortfreigabe einen ungefähren Deutschland-Mittelwert bei [Open-Meteo](https://open-meteo.com/) ab. Bestehende Spielstände werden bei neuen Versionen migriert und nicht mehr zurückgesetzt.
+Die App hat kein Nutzerkonto und keinen Server für Spielstände. Namen, Fortschritte, Quests, Reisen, Inventare, Gärten und die gesamte Capy-Bibliothek bleiben lokal auf dem Gerät. Nur für die Landschaft fragt die App ohne Standortfreigabe einen ungefähren Deutschland-Mittelwert bei [Open-Meteo](https://open-meteo.com/) ab. Bestehende Spielstände werden bei neuen Versionen migriert und nicht mehr zurückgesetzt.

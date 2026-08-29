@@ -110,7 +110,7 @@ function homeDuration(returnedAt, seed, completedTrips) {
 function initialTravel(adoptedAt, seed) {
   const firstWait = (5 + (seedNumber(`${seed}:first-trip`) % 4)) * HOUR;
   return {
-    version: 1,
+    version: 2,
     status: "home",
     destinationId: null,
     departedAt: 0,
@@ -121,6 +121,11 @@ function initialTravel(adoptedAt, seed) {
     lastReturnAt: 0,
     lastDestinationId: null,
     lastSouvenir: "",
+    rewardId: null,
+    lastRewardId: null,
+    companionId: null,
+    lastCompanionId: null,
+    initiatedBy: "auto",
     returnPending: false,
   };
 }
@@ -135,7 +140,7 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
   const travel = hadTravel ? {
     ...base,
     ...candidate,
-    version: 1,
+    version: 2,
     status: candidate.status === "away" && destinationById(candidate.destinationId) ? "away" : "home",
     destinationId: destinationById(candidate.destinationId) ? candidate.destinationId : null,
     departedAt: Math.max(0, Number(candidate.departedAt) || 0),
@@ -143,6 +148,11 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
     nextDepartureAt: Math.max(0, Number(candidate.nextDepartureAt) || base.nextDepartureAt),
     completedTrips: Math.max(0, Number(candidate.completedTrips) || 0),
     visitedIds: Array.isArray(candidate.visitedIds) ? [...new Set(candidate.visitedIds.filter((id) => destinationById(id)))].slice(-20) : [],
+    rewardId: typeof candidate.rewardId === "string" ? candidate.rewardId : null,
+    lastRewardId: typeof candidate.lastRewardId === "string" ? candidate.lastRewardId : null,
+    companionId: typeof candidate.companionId === "string" ? candidate.companionId : null,
+    lastCompanionId: typeof candidate.lastCompanionId === "string" ? candidate.lastCompanionId : null,
+    initiatedBy: candidate.initiatedBy === "player" ? "player" : "auto",
     returnPending: Boolean(candidate.returnPending),
   } : base;
 
@@ -154,7 +164,11 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
     travel.lastReturnAt = travel.returnsAt;
     travel.lastDestinationId = travel.destinationId;
     travel.lastSouvenir = destination?.souvenir || "eine schöne Erinnerung";
+    travel.lastRewardId = travel.rewardId;
+    travel.lastCompanionId = travel.companionId;
     travel.destinationId = null;
+    travel.rewardId = null;
+    travel.companionId = null;
     travel.departedAt = 0;
     travel.nextDepartureAt = travel.returnsAt + homeDuration(travel.returnsAt, seed, travel.completedTrips);
     travel.returnsAt = 0;
@@ -171,6 +185,9 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
       travel.destinationId = plan.destination.id;
       travel.departedAt = departedAt;
       travel.returnsAt = returnsAt;
+      travel.rewardId = null;
+      travel.companionId = null;
+      travel.initiatedBy = "auto";
       travel.returnPending = false;
       break;
     }
@@ -179,12 +196,35 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
     travel.lastReturnAt = returnsAt;
     travel.lastDestinationId = plan.destination.id;
     travel.lastSouvenir = plan.destination.souvenir;
+    travel.lastRewardId = null;
+    travel.lastCompanionId = null;
     travel.nextDepartureAt = returnsAt + homeDuration(returnsAt, seed, travel.completedTrips);
     loops += 1;
   }
 
+  if (hadTravel && loops > 0 && travel.status === "home") travel.returnPending = true;
+
   if (loops >= 180 && now >= travel.nextDepartureAt) travel.nextDepartureAt = now + 3 * HOUR;
   return travel;
+}
+
+export function departNow(candidate, adoptedAt, now = Date.now(), seed = "capy") {
+  const travel = normalizeTravel(candidate, adoptedAt, now, seed);
+  if (isTraveling(travel, now)) return travel;
+  const plan = tripPlan(now, `${seed}:player`, travel.completedTrips);
+  return {
+    ...travel,
+    version: 2,
+    status: "away",
+    destinationId: plan.destination.id,
+    departedAt: now,
+    returnsAt: now + plan.duration,
+    nextDepartureAt: 0,
+    rewardId: null,
+    companionId: null,
+    initiatedBy: "player",
+    returnPending: false,
+  };
 }
 
 export function isTraveling(travel, now = Date.now()) {
