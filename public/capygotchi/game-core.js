@@ -1,10 +1,13 @@
+import { createInventory, normalizeInventory } from "./inventory-core.js?v=8";
+import { createGarden, createWorld, normalizeGarden, normalizeWorld } from "./world-core.js?v=8";
+
 export const STORAGE_KEY = "capygotchi-state-v1";
 export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cream"]);
 
 export const NEED_KEYS = Object.freeze(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
 
 export const DEFAULT_STATE = Object.freeze({
-  version: 5,
+  version: 6,
   name: "Emmi",
   furVariant: "classic",
   adoptedAt: 0,
@@ -25,6 +28,9 @@ export const DEFAULT_STATE = Object.freeze({
   questProgress: null,
   travel: null,
   landscapeArea: "home",
+  inventory: null,
+  garden: null,
+  world: null,
 });
 
 export const FOODS = Object.freeze({
@@ -68,6 +74,9 @@ export function makeState(now = Date.now(), name = "Emmi", furVariant = "classic
     adoptedAt: now,
     updatedAt: now,
     memories: [],
+    inventory: createInventory(),
+    garden: createGarden(),
+    world: createWorld(now, "home", name),
   };
 }
 
@@ -98,7 +107,7 @@ export function normalizeState(candidate, now = Date.now()) {
   return {
     ...base,
     ...candidate,
-    version: 5,
+    version: 6,
     name: cleanName(candidate.name),
     furVariant: FUR_VARIANTS.includes(candidate.furVariant) ? candidate.furVariant : "classic",
     adoptedAt: Number.isFinite(candidate.adoptedAt) && candidate.adoptedAt > 0 ? candidate.adoptedAt : now,
@@ -118,7 +127,10 @@ export function normalizeState(candidate, now = Date.now()) {
     memories: normalizeMemories(candidate.memories),
     questProgress: candidate.questProgress && typeof candidate.questProgress === "object" ? candidate.questProgress : null,
     travel: candidate.travel && typeof candidate.travel === "object" ? candidate.travel : null,
-    landscapeArea: ["home", "meadow", "garden"].includes(candidate.landscapeArea) ? candidate.landscapeArea : "home",
+    landscapeArea: ["home", "meadow", "garden", "wintergarden"].includes(candidate.landscapeArea) ? candidate.landscapeArea : "home",
+    inventory: normalizeInventory(candidate.inventory),
+    garden: normalizeGarden(candidate.garden),
+    world: normalizeWorld(candidate.world || { area: candidate.landscapeArea }, now, `${candidate.name || base.name}:${candidate.adoptedAt || now}`),
   };
 }
 

@@ -16,9 +16,9 @@ import {
   makeState,
   moodFor,
   statusPhrase,
-} from "./game-core.js?v=7";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=7";
-import { dialogueFor } from "./dialogues.js?v=7";
+} from "./game-core.js?v=8";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=8";
+import { dialogueFor } from "./dialogues.js?v=8";
 import {
   LIBRARY_KEY,
   activeProfile,
@@ -28,7 +28,7 @@ import {
   removeProfile,
   selectProfile,
   updateProfile,
-} from "./pet-library.js?v=7";
+} from "./pet-library.js?v=8";
 import {
   QUEST_DEFINITIONS,
   activateQuest,
@@ -39,16 +39,42 @@ import {
   questTimeLabel,
   recordQuestAction,
   taskQuestComplete,
-} from "./quest-core.js?v=7";
-import { startQuestGame } from "./quest-games.js?v=7";
+} from "./quest-core.js?v=8";
+import { startQuestGame } from "./quest-games.js?v=8";
 import {
+  departNow,
   destinationById,
   isTraveling,
   normalizeTravel,
   travelProgress,
   travelTimeLabel,
-} from "./travel-core.js?v=7";
-import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=7";
+} from "./travel-core.js?v=8";
+import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=8";
+import {
+  EQUIPMENT_SLOTS,
+  ITEM_DEFINITIONS,
+  addInventoryItem,
+  inventoryCompletion,
+  normalizeInventory,
+  rewardForDestination,
+  toggleEquipment,
+  togglePlacedItem,
+} from "./inventory-core.js?v=8";
+import {
+  ANIMAL_FRIENDS,
+  CROPS,
+  WORLD_AREAS,
+  consumeHarvest,
+  cropProgress,
+  cropTimeLabel,
+  harvestCrop,
+  normalizeGarden,
+  normalizeWorld,
+  plantCrop,
+  selectCrop,
+  travelCompanion,
+  waterCrop,
+} from "./world-core.js?v=8";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -118,6 +144,14 @@ const elements = {
   weatherDialog: $("#weather-dialog"),
   weatherIcon: $("#weather-icon"),
   weatherTemperature: $("#weather-temperature"),
+  journeyDialog: $("#journey-dialog"),
+  inventoryDialog: $("#inventory-dialog"),
+  gardenDialog: $("#garden-dialog"),
+  inventoryGrid: $("#inventory-grid"),
+  gardenPlots: $("#garden-plots"),
+  animalVisitor: $("#animal-visitor"),
+  outfitLayer: $("#outfit-layer"),
+  placedItemsLayer: $("#placed-items-layer"),
   dialogueDialog: $("#dialogue-dialog"),
   settingsDialog: $("#settings-dialog"),
 };
@@ -146,6 +180,7 @@ let pendingQuestAction = null;
 let lastQuestNotice = "";
 let weatherData = fallbackGermanyWeather();
 let weatherLoading = false;
+let inventoryFilter = "all";
 
 const NAME_SUGGESTIONS = ["Emmi", "Flocke", "Lotti", "Pino", "Nala", "Keks", "Maja", "Oskar"];
 
@@ -183,6 +218,22 @@ function travelSeed() {
   return `${activePetId || "new"}:${state.name}:${state.adoptedAt}`;
 }
 
+function worldSeed() {
+  return `${activePetId || "new"}:${state.name}:world`;
+}
+
+function prepareTravelCargo() {
+  if (!isTraveling(state.travel)) return;
+  state.inventory = normalizeInventory(state.inventory);
+  state.world = normalizeWorld(state.world, Date.now(), worldSeed());
+  if (!state.travel.rewardId) {
+    state.travel.rewardId = rewardForDestination(state.inventory, state.travel.destinationId, `${travelSeed()}:${state.travel.departedAt}`);
+  }
+  if (state.travel.companionId === null || state.travel.companionId === undefined) {
+    state.travel.companionId = travelCompanion(state.world, `${travelSeed()}:${state.travel.destinationId}:${state.travel.departedAt}`);
+  }
+}
+
 function syncTravelState(now = Date.now()) {
   if (!hasStoredState) return false;
   const previousStatus = state.travel?.status || "home";
@@ -191,16 +242,29 @@ function syncTravelState(now = Date.now()) {
     state.travel = normalizeTravel(state.travel, state.adoptedAt, now, travelSeed());
   }
   const traveling = isTraveling(state.travel, now);
+  if (traveling) prepareTravelCargo();
   if (state.travel?.returnPending && !traveling) {
     const destination = destinationById(state.travel.lastDestinationId);
-    state.travel = { ...state.travel, returnPending: false };
+    const rewardId = state.travel.lastRewardId || rewardForDestination(state.inventory, state.travel.lastDestinationId, `${travelSeed()}:return:${state.travel.completedTrips}`);
+    const reward = rewardId ? ITEM_DEFINITIONS[rewardId] : null;
+    const companion = ANIMAL_FRIENDS[state.travel.lastCompanionId];
+    const inventoryResult = rewardId ? addInventoryItem(state.inventory, rewardId, now) : { inventory: state.inventory, added: false };
+    state.inventory = inventoryResult.inventory;
+    if (!reward) {
+      state.garden = normalizeGarden(state.garden);
+      state.garden.seeds = Object.fromEntries(Object.entries(state.garden.seeds).map(([key, amount]) => [key, amount + 1]));
+    }
+    state.travel = { ...state.travel, returnPending: false, lastRewardId: rewardId };
     state = applyChanges(state, { curiosity: 9, fun: 5, social: -2, energy: -4, xp: 12 });
-    remember(`${state.name} ist aus ${destination?.title || "einem Abenteuer"} zurück und brachte ${state.travel.lastSouvenir || "eine schöne Erinnerung"} mit.`, "⌁");
-    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe dir ${state.travel.lastSouvenir || "eine Erinnerung"} mitgebracht.`;
-    showToast(`${state.name.toUpperCase()} IST VON DER REISE ZURÜCK!`, 4200);
+    const findText = reward ? `${reward.label} für unsere Sammlung` : "ein buntes Samentütchen für den Garten";
+    const companionText = companion ? ` Zusammen mit ${companion.label}.` : "";
+    remember(`${state.name} ist aus ${destination?.title || "einem Abenteuer"} zurück und brachte ${findText} mit.${companionText}`, reward?.icon || "⌁");
+    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe ${findText} mitgebracht.${companion ? ` ${companion.label} war dabei!` : ""}`;
+    showToast(`${state.name.toUpperCase()} IST ZURÜCK · ${reward?.label?.toUpperCase() || "NEUE SAMEN"}!`, 5200);
   } else if (traveling) {
     const destination = destinationById(state.travel.destinationId);
-    currentPhrase = `Reisepost von ${state.name}: Ich bin gerade in ${destination.title} und komme von allein wieder zurück.`;
+    const companion = ANIMAL_FRIENDS[state.travel.companionId];
+    currentPhrase = `Reisepost von ${state.name}: Ich bin gerade in ${destination.title}${companion ? ` – ${companion.label} ist mitgekommen` : ""} und komme von allein wieder zurück.`;
   }
   if (previousStatus !== state.travel?.status && state.travel?.status === "away") {
     const destination = destinationById(state.travel.destinationId);
@@ -209,15 +273,73 @@ function syncTravelState(now = Date.now()) {
   return traveling;
 }
 
+function syncWorldState(now = Date.now(), traveling = isTraveling(state.travel, now)) {
+  const previousArea = state.world?.area || state.landscapeArea || "home";
+  state.world = normalizeWorld(state.world, now, worldSeed());
+  state.garden = normalizeGarden(state.garden);
+  state.inventory = normalizeInventory(state.inventory);
+  if (state.sleeping) state.world = { ...state.world, area: "home" };
+  state.landscapeArea = state.world.area;
+  if (!traveling && previousArea !== state.world.area && !interactionBusy && !document.querySelector("dialog[open]")) {
+    const area = WORLD_AREAS[state.world.area];
+    currentPhrase = `Ich bin von allein weitergezogen. Jetzt bin ich bei ${area.label.toLowerCase()}.`;
+    showToast(`${state.name} ist jetzt bei ${area.short}.`, 2800);
+  }
+}
+
 function wanderPosition(now = Date.now()) {
   const value = [...`${state.name}:${state.landscapeArea}:${Math.floor(now / 30_000)}`]
     .reduce((sum, character) => ((sum * 31) + character.charCodeAt(0)) >>> 0, 17);
   return 25 + (value % 51);
 }
 
+function renderOutfit() {
+  elements.outfitLayer.replaceChildren();
+  for (const [slot, itemId] of Object.entries(state.inventory.equipped)) {
+    const item = ITEM_DEFINITIONS[itemId];
+    if (!item) continue;
+    const piece = document.createElement("i");
+    piece.className = "outfit-piece";
+    piece.dataset.slot = slot;
+    piece.dataset.item = itemId;
+    piece.textContent = item.icon;
+    elements.outfitLayer.append(piece);
+  }
+}
+
+function renderPlacedItems(traveling = false) {
+  elements.placedItemsLayer.replaceChildren();
+  if (traveling) return;
+  const areaItems = state.inventory.placedItemIds
+    .map((id) => ITEM_DEFINITIONS[id])
+    .filter((item) => item?.area === state.landscapeArea);
+  areaItems.forEach((item, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "placed-world-item";
+    button.dataset.itemId = item.id;
+    button.style.setProperty("--left", `${19 + ((index * 31) % 66)}%`);
+    button.style.setProperty("--bottom", `${105 + ((index % 2) * 48)}px`);
+    const icon = document.createElement("span");
+    icon.textContent = item.icon;
+    const label = document.createElement("small");
+    label.textContent = item.label;
+    button.append(icon, label);
+    elements.placedItemsLayer.append(button);
+  });
+}
+
+function renderAnimalVisitor(traveling = false) {
+  const friend = !traveling && !state.sleeping ? ANIMAL_FRIENDS[state.world.friendId] : null;
+  elements.animalVisitor.hidden = !friend;
+  if (!friend) return;
+  $("#visitor-icon").textContent = friend.icon;
+  $("#visitor-name").textContent = friend.label;
+  elements.animalVisitor.setAttribute("aria-label", `${friend.label} begrüßen`);
+}
+
 function renderLandscape(now = Date.now(), traveling = isTraveling(state.travel, now)) {
   const growth = growthFor(state);
-  if (state.sleeping) state.landscapeArea = "home";
   elements.habitat.dataset.area = state.landscapeArea;
   elements.habitat.classList.toggle("is-away", traveling);
   elements.petButton.dataset.growth = growth.id;
@@ -225,9 +347,13 @@ function renderLandscape(now = Date.now(), traveling = isTraveling(state.travel,
   $('.cabin[data-landmark="cabin"]').setAttribute("aria-label", `${state.name}s kleine Schlafhütte ansehen`);
   elements.petButton.style.setProperty("--pet-x", `${wanderPosition(now)}%`);
   $("#growth-label").textContent = `${growth.label} · WÄCHST MIT DIR`;
-  const areaNames = { home: "ZUHAUSE AM TEICH", meadow: "WILDWIESE & DAMWILD", garden: "GURKENGARTEN" };
-  $("#area-name").textContent = traveling ? "CAPY AUF SOLO-REISE" : areaNames[state.landscapeArea];
-  $$('button[data-area]', $("#world-navigation")).forEach((button) => button.classList.toggle("is-active", button.dataset.area === state.landscapeArea));
+  $("#area-name").textContent = traveling ? "CAPY AUF SOLO-REISE" : WORLD_AREAS[state.landscapeArea].label;
+  const moveMinutes = Math.max(1, Math.ceil((state.world.nextMoveAt - now) / 60_000));
+  $("#area-choice").textContent = traveling ? "ZIEL SELBST GEWÄHLT" : `CAPY WÄHLT SELBST · WEITER IN ~${moveMinutes} MIN`;
+  $$("[data-area]", $("#world-navigation")).forEach((item) => item.classList.toggle("is-active", item.dataset.area === state.landscapeArea));
+  renderOutfit();
+  renderPlacedItems(traveling);
+  renderAnimalVisitor(traveling);
   elements.travelPostcard.hidden = !traveling;
   if (!traveling) {
     if (elements.travelDialog.open) elements.travelDialog.close();
@@ -281,20 +407,216 @@ function openTravelDetails() {
   $("#travel-dialog-countdown").textContent = travelTimeLabel(state.travel);
   $("#travel-progress-fill").style.setProperty("--value", `${travelProgress(state.travel)}%`);
   $("#travel-illustration").dataset.palette = destination.palette;
+  const companion = ANIMAL_FRIENDS[state.travel.companionId];
+  $("#travel-companion").hidden = !companion;
+  if (companion) {
+    $("#travel-companion-icon").textContent = companion.icon;
+    $("#travel-companion-name").textContent = companion.label;
+  }
+  $("#travel-reward-label").textContent = state.travel.rewardId ? "Ein geheimnisvoller neuer Fund" : "Eine Überraschung aus der Ferne";
   $("#travel-history").textContent = `${state.name} hat bereits ${state.travel.completedTrips} ${state.travel.completedTrips === 1 ? "Solo-Reise" : "Solo-Reisen"} beendet und ${state.travel.visitedIds.length} verschiedene Orte entdeckt.`;
   openDialog(elements.travelDialog);
 }
 
-function selectLandscapeArea(area) {
-  if (isTraveling(state.travel) || state.sleeping || interactionBusy || !["home", "meadow", "garden"].includes(area)) return;
-  state.landscapeArea = area;
-  const phrases = {
-    home: "Zuhause! Meine Hütte riecht nach Holz und mein Teich nach einem sehr guten Nachmittag.",
-    meadow: "Schau, die Damhirsche sind da. Ich beobachte sie immer ganz leise.",
-    garden: "Willkommen im Gurkengarten! Vielleicht läuft gleich unser kleines Huhn vorbei.",
-  };
-  talk(phrases[area], { speak: false });
+function openJourneyDialog() {
+  if (!hasStoredState) return;
+  if (isTraveling(state.travel)) {
+    openTravelDetails();
+    return;
+  }
+  if (state.sleeping) {
+    showToast(`Weck ${state.name} erst auf, bevor der Rucksack gepackt wird.`);
+    return;
+  }
+  if (interactionBusy || currentConversation) {
+    showToast("Lass die aktuelle gemeinsame Aktion kurz zu Ende gehen.");
+    return;
+  }
+  closeTray();
+  $("#journey-capy-name").textContent = state.name;
+  $("#journey-title").textContent = `${state.name}, wohin geht es wohl?`;
+  openDialog(elements.journeyDialog);
+}
+
+function startManualJourney() {
+  if (isTraveling(state.travel) || state.sleeping || interactionBusy) return;
+  const now = Date.now();
+  state.travel = departNow(state.travel, state.adoptedAt, now, travelSeed());
+  prepareTravelCargo();
+  const destination = destinationById(state.travel.destinationId);
+  const companion = ANIMAL_FRIENDS[state.travel.companionId];
+  state = applyChanges(state, { curiosity: 5, fun: 3, energy: -2, social: companion ? 2 : -1, xp: 4 }, now);
+  remember(`${state.name} wurde von dir auf eine Überraschungsreise geschickt. Das Ziel: ${destination.title}.${companion ? ` ${companion.label} reist mit.` : ""}`, "⌁");
+  elements.journeyDialog.close();
+  talk(`Rucksack gepackt! Ich habe mein Ziel selbst gewählt: ${destination.title}.${companion ? ` ${companion.label} kommt mit!` : ""} Bis später!`);
+  playSound("happy");
+  haptic([20, 35, 20, 35, 35]);
+  showToast(`${state.name.toUpperCase()} IST AUF ÜBERRASCHUNGSREISE!`, 4200);
+  render(now);
+  window.setTimeout(openTravelDetails, 220);
+}
+
+function renderInventory(filter = inventoryFilter) {
+  inventoryFilter = filter;
+  state.inventory = normalizeInventory(state.inventory);
+  state.garden = normalizeGarden(state.garden);
+  const completion = inventoryCompletion(state.inventory);
+  const equippedCount = Object.values(state.inventory.equipped).filter(Boolean).length;
+  $("#inventory-summary").innerHTML = `
+    <div><strong>${completion.owned}/${completion.total}</strong><small>ENTDECKT</small></div>
+    <div><strong>${equippedCount}/5</strong><small>ANGEZOGEN</small></div>
+    <div><strong>${state.inventory.placedItemIds.length}</strong><small>PLATZIERT</small></div>`;
+  $$("button[data-filter]", $("#inventory-tabs")).forEach((button) => button.classList.toggle("is-active", button.dataset.filter === filter));
+  elements.inventoryGrid.replaceChildren();
+
+  if (filter === "harvest") {
+    const gardenCard = document.createElement("article");
+    gardenCard.className = "inventory-card is-placed";
+    gardenCard.innerHTML = '<span class="inventory-card-icon">♣</span><strong>Gemüsegarten</strong><small>Pflanzen, gießen und offline wachsen lassen.</small><button type="button" data-open-garden>GARTEN PFLEGEN</button>';
+    elements.inventoryGrid.append(gardenCard);
+    for (const crop of Object.values(CROPS)) {
+      const card = document.createElement("article");
+      card.className = "inventory-card";
+      card.innerHTML = `<span class="inventory-card-icon">${crop.icon}</span><strong>${crop.label}</strong><small>${state.garden.harvest[crop.id]} Stück im Vorrat.</small><button type="button" data-feed-harvest="${crop.id}" ${state.garden.harvest[crop.id] ? "" : "disabled"}>${state.garden.harvest[crop.id] ? "JETZT FÜTTERN" : "NOCH NICHT GEERNTET"}</button>`;
+      elements.inventoryGrid.append(card);
+    }
+    return;
+  }
+
+  const definitions = Object.values(ITEM_DEFINITIONS).filter((item) => filter === "all" || item.type === filter);
+  for (const item of definitions) {
+    const owned = state.inventory.ownedItemIds.includes(item.id);
+    const equipped = item.slot && state.inventory.equipped[item.slot] === item.id;
+    const placed = state.inventory.placedItemIds.includes(item.id);
+    const card = document.createElement("article");
+    card.className = `inventory-card${owned ? "" : " is-locked"}${equipped ? " is-equipped" : ""}${placed ? " is-placed" : ""}`;
+    const icon = document.createElement("span");
+    icon.className = "inventory-card-icon";
+    icon.textContent = owned ? item.icon : "?";
+    const name = document.createElement("strong");
+    name.textContent = owned ? item.label : "Unbekannter Reisefund";
+    const detail = document.createElement("small");
+    detail.textContent = owned ? item.detail : "Dein Capy kann diesen Gegenstand von einer Reise mitbringen.";
+    const tag = document.createElement("em");
+    tag.textContent = item.slot ? EQUIPMENT_SLOTS[item.slot] : WORLD_AREAS[item.area].short;
+    const action = document.createElement("button");
+    action.type = "button";
+    action.dataset.inventoryItem = item.id;
+    action.disabled = !owned;
+    action.textContent = !owned ? "NOCH UNENTDECKT" : item.type === "wearable" ? (equipped ? "AUSZIEHEN" : "ANZIEHEN") : (placed ? "EINPACKEN" : "PLATZIEREN");
+    card.append(icon, name, detail, tag, action);
+    elements.inventoryGrid.append(card);
+  }
+}
+
+function openInventory(filter = "all") {
+  if (!hasStoredState || interactionBusy) return;
+  closeTray();
+  renderInventory(filter);
+  openDialog(elements.inventoryDialog);
+}
+
+function useInventoryItem(itemId) {
+  const item = ITEM_DEFINITIONS[itemId];
+  if (!item) return;
+  if (item.type === "wearable") {
+    const result = toggleEquipment(state.inventory, itemId);
+    state.inventory = result.inventory;
+    const replaced = ITEM_DEFINITIONS[result.replacedId];
+    talk(result.equipped
+      ? `${item.label} steht mir ausgezeichnet!${replaced ? ` ${replaced.label} kommt dafür zurück in den Rucksack.` : ""}`
+      : `${item.label} liegt wieder ordentlich im Rucksack.`, { speak: false });
+    animateCapy("is-loved", 1200);
+  } else {
+    const result = togglePlacedItem(state.inventory, itemId);
+    state.inventory = result.inventory;
+    talk(result.placed
+      ? `${item.label} steht jetzt bei ${WORLD_AREAS[item.area].label.toLowerCase()}. Ich werde es dort wiederfinden.`
+      : `${item.label} ist wieder sicher im Rucksack.`, { speak: false });
+  }
+  haptic(16);
+  renderInventory();
   render();
+}
+
+function renderGarden(now = Date.now()) {
+  state.garden = normalizeGarden(state.garden);
+  const picker = $("#seed-picker");
+  picker.replaceChildren();
+  for (const crop of Object.values(CROPS)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `seed-button${state.garden.selectedCrop === crop.id ? " is-active" : ""}`;
+    button.dataset.cropId = crop.id;
+    button.innerHTML = `<span>${crop.icon}</span><strong>${crop.label}</strong><small>× ${state.garden.seeds[crop.id]}</small>`;
+    picker.append(button);
+  }
+
+  const ownsWateringCan = state.inventory.ownedItemIds.includes("watering_can");
+  elements.gardenPlots.replaceChildren();
+  state.garden.plots.forEach((plot, index) => {
+    const card = document.createElement("article");
+    if (!plot) {
+      const crop = CROPS[state.garden.selectedCrop];
+      card.className = "garden-plot is-empty";
+      card.innerHTML = `<span>＋</span><strong>BEET ${index + 1} IST FREI</strong><small>${crop.label} auswählen</small><button type="button" data-garden-action="plant" data-plot="${index}" ${state.garden.seeds[crop.id] ? "" : "disabled"}>${crop.icon} EINPFLANZEN</button>`;
+    } else {
+      const crop = CROPS[plot.cropId];
+      const ready = now >= plot.readyAt;
+      card.className = `garden-plot${ready ? " is-ready" : ""}`;
+      card.innerHTML = `<span>${crop.icon}</span><strong>${crop.label.toUpperCase()}</strong><small>${cropTimeLabel(plot, now)}${plot.watered ? " · GEGOSSEN" : ""}</small><div class="crop-progress"><span style="--value:${cropProgress(plot, now)}%"></span></div>`;
+      const action = document.createElement("button");
+      action.type = "button";
+      action.dataset.plot = String(index);
+      action.dataset.gardenAction = ready ? "harvest" : "water";
+      action.disabled = !ready && (!ownsWateringCan || plot.watered);
+      action.textContent = ready ? "JETZT ERNTEN" : plot.watered ? "WÄCHST SCHNELLER" : ownsWateringCan ? "MIT GIESSKANNE GIESSEN" : "GIESSKANNE AUF REISE FINDEN";
+      card.append(action);
+    }
+    elements.gardenPlots.append(card);
+  });
+  $("#harvest-pantry").innerHTML = `<strong>DEIN ERNTEVORRAT · BEIM FÜTTERN VERFÜGBAR</strong><div class="pantry-row">${Object.values(CROPS).map((crop) => `<span>${crop.icon}<b>× ${state.garden.harvest[crop.id]}</b></span>`).join("")}</div>`;
+}
+
+function openGarden() {
+  if (!hasStoredState || isTraveling(state.travel)) {
+    if (isTraveling(state.travel)) showToast("Der Garten wartet, bis dein Capy wieder zu Hause ist.");
+    return;
+  }
+  if (elements.inventoryDialog.open) elements.inventoryDialog.close();
+  renderGarden();
+  openDialog(elements.gardenDialog);
+}
+
+function performGardenAction(action, plotIndex) {
+  const now = Date.now();
+  if (action === "plant") {
+    const result = plantCrop(state.garden, plotIndex, now);
+    state.garden = result.garden;
+    if (result.planted) talk(`${result.crop.label} ist eingepflanzt. Es wächst auch weiter, wenn du die App schließt.`, { speak: false });
+    else showToast("Für dieses Beet fehlt gerade Saatgut.");
+  } else if (action === "water") {
+    if (!state.inventory.ownedItemIds.includes("watering_can")) {
+      showToast("Die Gießkanne kann dein Capy von einer Reise mitbringen.");
+      return;
+    }
+    const result = waterCrop(state.garden, plotIndex, now);
+    state.garden = result.garden;
+    if (result.watered) talk("Gluck, gluck – jetzt wächst das Gemüse deutlich schneller!", { speak: false });
+  } else if (action === "harvest") {
+    const result = harvestCrop(state.garden, plotIndex, now);
+    state.garden = result.garden;
+    if (result.harvested) {
+      state = applyChanges(state, { curiosity: 3, fun: 2, xp: 5 }, now);
+      remember(`${state.name} hat mit dir ${result.amount} × ${result.crop.label} geerntet.`, result.crop.icon);
+      talk(`${result.amount} ${result.crop.label}! Die können wir jetzt direkt aus dem Futterfach geben.`);
+      showToast(`ERNTE: ${result.amount} × ${result.crop.label.toUpperCase()}`, 3200);
+    }
+  }
+  playSound("tap");
+  haptic(14);
+  renderGarden(now);
+  render(now);
 }
 
 function scheduleQuestWake(now = Date.now()) {
@@ -515,6 +837,7 @@ function buildPixelCapy() {
 function render(now = Date.now()) {
   state = advanceState(state, now);
   const traveling = syncTravelState(now);
+  syncWorldState(now, traveling);
   if (hasStoredState) state.questProgress = normalizeQuestProgress(state.questProgress, state.adoptedAt, now, `${activePetId}:${state.name}`);
   const mood = moodFor(state);
   const level = levelInfo(state.xp);
@@ -537,6 +860,8 @@ function render(now = Date.now()) {
     ? '<span aria-hidden="true">⌁</span> AUF REISEN'
     : `<span aria-hidden="true">${state.sleeping ? "☾" : "♥"}</span> ${mood.label}`;
   elements.speech.textContent = currentPhrase;
+  const collection = inventoryCompletion(state.inventory);
+  $("#inventory-count").textContent = `${collection.owned} / ${collection.total} GEGENSTÄNDE`;
 
   for (const key of NEED_KEYS) {
     const rounded = Math.round(state[key]);
@@ -557,6 +882,8 @@ function render(now = Date.now()) {
   renderLandscape(now, traveling);
   renderWeather();
   renderQuestIndicator(now);
+  if (elements.inventoryDialog.open) renderInventory();
+  if (elements.gardenDialog.open) renderGarden(now);
   saveState();
 }
 
@@ -630,6 +957,31 @@ function itemSprite(key, extra = "") {
   return sprite;
 }
 
+function itemFor(category, key) {
+  if (category === "feed" && key.startsWith("harvest-")) {
+    const cropId = key.slice("harvest-".length);
+    const crop = CROPS[cropId];
+    if (!crop) return null;
+    return {
+      ...crop.food,
+      label: crop.label,
+      detail: `Eigene Ernte · noch ${state.garden.harvest[cropId]} Stück`,
+      harvest: true,
+      cropId,
+    };
+  }
+  return GROUPS[category]?.items[key] || null;
+}
+
+function trayEntries(category, group) {
+  const entries = Object.entries(group.items);
+  if (category !== "feed") return entries;
+  const harvest = Object.values(CROPS)
+    .filter((crop) => state.garden.harvest[crop.id] > 0)
+    .map((crop) => [`harvest-${crop.id}`, itemFor("feed", `harvest-${crop.id}`)]);
+  return [...harvest, ...entries];
+}
+
 function sceneObject(key, x, y, className = "") {
   const object = itemSprite(key, `scene-object ${className}`);
   object.style.left = `${x}px`;
@@ -678,12 +1030,12 @@ function openTray(category) {
   elements.trayItems.replaceChildren();
 
   const questId = state.questProgress?.activeId || "";
-  for (const [key, item] of Object.entries(group.items)) {
-    const availability = category === "feed" ? foodAvailability(key, state, Date.now(), questId) : { available: true };
+  for (const [key, item] of trayEntries(category, group)) {
+    const availability = category === "feed" && !item.harvest ? foodAvailability(key, state, Date.now(), questId) : { available: true };
     if (!availability.available) continue;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `tray-item${item.temporary ? " is-limited" : ""}`;
+    button.className = `tray-item${item.temporary ? " is-limited" : ""}${item.harvest ? " is-harvest" : ""}`;
     button.dataset.category = category;
     button.dataset.key = key;
     button.setAttribute("aria-label", `${item.label}: ${item.detail}. Ziehen oder auswählen.`);
@@ -719,7 +1071,8 @@ function selectItem(category, key) {
   $$(".tray-item", elements.trayItems).forEach((button) => {
     button.classList.toggle("is-selected", button.dataset.category === category && button.dataset.key === key);
   });
-  const item = GROUPS[category].items[key];
+  const item = itemFor(category, key);
+  if (!item) return;
   const target = targetFor(category, key) === "capy" ? state.name : "das Gehege";
   talk(`${item.label} ausgewählt. Tippe jetzt auf ${target} – oder zieh es direkt hin.`, { speak: false });
   showToast(`${item.label} ausgewählt`, 1700);
@@ -839,15 +1192,24 @@ function endDrag(event) {
 
 async function performItem(category, key, clientPoint) {
   if (interactionBusy || state.sleeping || isTraveling(state.travel)) return;
-  const item = GROUPS[category]?.items[key];
+  const item = itemFor(category, key);
   if (!item) return;
-  if (category === "feed") {
+  if (category === "feed" && !item.harvest) {
     const availability = foodAvailability(key, state, Date.now(), state.questProgress?.activeId || "");
     if (!availability.available) {
       showToast(`${item.label} ist gerade nicht mehr auf dem Markt.`);
       closeTray();
       return;
     }
+  }
+  if (item.harvest) {
+    const result = consumeHarvest(state.garden, item.cropId);
+    if (!result.consumed) {
+      showToast(`${item.label} ist nicht mehr im Erntevorrat.`);
+      closeTray();
+      return;
+    }
+    state.garden = result.garden;
   }
   interactionBusy = true;
   pendingQuestAction = `${category}:${key}`;
@@ -1268,6 +1630,9 @@ function resetSceneForSwitch() {
   if (elements.questGameDialog.open) elements.questGameDialog.close();
   if (elements.questDialog.open) elements.questDialog.close();
   if (elements.travelDialog.open) elements.travelDialog.close();
+  if (elements.journeyDialog.open) elements.journeyDialog.close();
+  if (elements.inventoryDialog.open) elements.inventoryDialog.close();
+  if (elements.gardenDialog.open) elements.gardenDialog.close();
   closeTray();
   if (bubbleSession) window.clearTimeout(bubbleSession.timer);
   bubbleSession = null;
@@ -1380,6 +1745,7 @@ elements.actions.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   if (button.dataset.action === "sleep") toggleSleep();
+  else if (button.dataset.action === "travel") openJourneyDialog();
   else if (activeTray === button.dataset.action) closeTray();
   else openTray(button.dataset.action);
 });
@@ -1413,10 +1779,54 @@ $("#journal-button").addEventListener("click", () => { renderJournal(); openDial
 $("#settings-button").addEventListener("click", () => { syncSettingsForm(); openDialog(elements.settingsDialog); });
 $("#weather-button").addEventListener("click", openWeatherDetails);
 elements.travelPostcard.addEventListener("click", openTravelDetails);
+$("#inventory-button").addEventListener("click", () => openInventory("all"));
+$("#start-journey-button").addEventListener("click", startManualJourney);
 
-$("#world-navigation").addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-area]");
-  if (button) selectLandscapeArea(button.dataset.area);
+$("#inventory-tabs").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-filter]");
+  if (button) renderInventory(button.dataset.filter);
+});
+
+elements.inventoryGrid.addEventListener("click", (event) => {
+  const itemButton = event.target.closest("button[data-inventory-item]");
+  if (itemButton && !itemButton.disabled) useInventoryItem(itemButton.dataset.inventoryItem);
+  if (event.target.closest("button[data-open-garden]")) openGarden();
+  const harvestButton = event.target.closest("button[data-feed-harvest]");
+  if (harvestButton && !harvestButton.disabled) {
+    elements.inventoryDialog.close();
+    openTray("feed");
+    selectItem("feed", `harvest-${harvestButton.dataset.feedHarvest}`);
+  }
+});
+
+$("#seed-picker").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-crop-id]");
+  if (!button) return;
+  state.garden = selectCrop(state.garden, button.dataset.cropId);
+  renderGarden();
+});
+
+elements.gardenPlots.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-garden-action]");
+  if (button && !button.disabled) performGardenAction(button.dataset.gardenAction, Number(button.dataset.plot));
+});
+
+elements.animalVisitor.addEventListener("click", () => {
+  const friend = ANIMAL_FRIENDS[state.world.friendId];
+  if (!friend) return;
+  state = applyChanges(state, { social: 3, fun: 2, xp: 1 });
+  talk(friend.phrase);
+  animateCapy("is-loved", 950);
+  haptic(12);
+  render();
+});
+
+elements.placedItemsLayer.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-item-id]");
+  const item = ITEM_DEFINITIONS[button?.dataset.itemId];
+  if (!item) return;
+  talk(`${item.label}: ${item.detail}`, { speak: false });
+  showToast("Im Inventar kannst du den Gegenstand wieder einpacken.");
 });
 
 elements.habitat.addEventListener("click", (event) => {
@@ -1426,9 +1836,8 @@ elements.habitat.addEventListener("click", (event) => {
     talk(state.sleeping
       ? "Pssst … hier schlafe ich gerade ganz warm und sicher."
       : "Das ist meine Hütte. Abends rolle ich mich dort ein – mit dem Schlafen-Knopf bringst du mich hinein.", { speak: false });
-  } else {
-    talk("Mein Gurkengarten! Manchmal bringt der Markt daraus eine geliebte Gewürzgurke mit.", { speak: false });
-  }
+  } else if (landmark.dataset.landmark === "garden") openGarden();
+  else talk("Mein Wintergarten! Hier passen Kaffee, Brettspiele, Pflanzen und Tierfreunde perfekt zusammen.", { speak: false });
 });
 
 $("#dedication-next").addEventListener("click", () => {

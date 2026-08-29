@@ -11,7 +11,7 @@
     <meta name="format-detection" content="telephone=no" />
     <title>Capygotchi</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=7" />
+    <link rel="stylesheet" href="./styles.css?v=8" />
   </head>
   <body>
     <main class="app-shell" id="app">
@@ -37,6 +37,7 @@
         <div class="weather-fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <button class="weather-chip" id="weather-button" type="button" aria-label="Aktuelles Deutschland-Wetter anzeigen"><span id="weather-icon" aria-hidden="true">◒</span><strong id="weather-temperature">18°</strong><small>DE-MITTE</small></button>
         <div class="area-name" id="area-name">ZUHAUSE AM TEICH</div>
+        <div class="area-choice" id="area-choice">CAPY WÄHLT SELBST</div>
 
         <div class="speech" role="status" aria-live="polite">
           <span id="speech-text">Mit dir ist jeder Tag ein guter Capy-Tag.</span>
@@ -54,17 +55,21 @@
           <button class="landmark cabin" type="button" data-landmark="cabin" aria-label="Emmis kleine Schlafhütte ansehen"><span class="cabin-roof"></span><span class="cabin-window"></span><span class="cabin-door"></span><small>CAPY-HÜTTE</small></button>
           <div class="deer-pen" aria-label="Im Hintergrund leben Damhirsche"><span class="fence"></span><span class="pixel-deer deer-one"></span><span class="pixel-deer deer-two"></span><small>DAMWILD-GEHEGE</small></div>
           <button class="landmark garden-shed" type="button" data-landmark="garden" aria-label="Den kleinen Garten ansehen"><span></span><small>GURKENGARTEN</small></button>
+          <button class="landmark wintergarden-house" type="button" data-landmark="wintergarden" aria-label="Den Capy-Wintergarten ansehen"><span class="glass-roof"></span><span class="glass-door"></span><small>WINTERGARTEN</small></button>
           <span class="pixel-chicken" id="pixel-chicken" aria-label="Ein kleines Huhn läuft durch die Landschaft"></span>
         </div>
 
         <button class="pet-button" id="pet-button" type="button" aria-label="Capygotchi streicheln oder ausgewählten Gegenstand geben">
           <span class="pixel-capy" id="pixel-capy" role="img" aria-label="Ein freundliches, fein gepixeltes Capybara"></span>
+          <span class="outfit-layer" id="outfit-layer" aria-hidden="true"></span>
           <span class="sleep-z sleep-z-one" aria-hidden="true">Z</span><span class="sleep-z sleep-z-two" aria-hidden="true">Z</span>
           <span class="heart-layer" id="heart-layer" aria-hidden="true"></span>
           <span class="pet-shadow" aria-hidden="true"></span>
         </button>
 
         <div class="scene-layer" id="scene-layer" aria-hidden="true"></div>
+        <div class="placed-items-layer" id="placed-items-layer" aria-label="Platzierte Sammlerstücke"></div>
+        <button class="animal-visitor" id="animal-visitor" type="button" hidden><span id="visitor-icon">♢</span><strong id="visitor-name">Hase Fips</strong><small>BESUCH</small></button>
         <div class="bubble-layer" id="bubble-layer" aria-label="Seifenblasen-Spiel"></div>
         <div class="splash-layer" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
@@ -79,9 +84,10 @@
           <span class="water" id="pond"></span>
         </div>
         <nav class="world-navigation" id="world-navigation" aria-label="Bereiche der Capy-Landschaft">
-          <button type="button" data-area="home" class="is-active"><span>⌂</span>ZUHAUSE</button>
-          <button type="button" data-area="meadow"><span>♣</span>WILDWIESE</button>
-          <button type="button" data-area="garden"><span>▰</span>GARTEN</button>
+          <span data-area="home" class="is-active"><b>⌂</b>ZUHAUSE</span>
+          <span data-area="meadow"><b>♣</b>WILDWIESE</span>
+          <span data-area="garden"><b>▰</b>GARTEN</span>
+          <span data-area="wintergarden"><b>☕</b>WINTERGARTEN</span>
         </nav>
       </section>
 
@@ -95,6 +101,8 @@
           </div>
           <div class="mood mood-happy" id="mood"><span aria-hidden="true">♥</span> GLÜCKLICH</div>
         </div>
+
+        <button class="collection-button" id="inventory-button" type="button"><span aria-hidden="true">▣</span><strong>RUCKSACK & SAMMLUNG</strong><small id="inventory-count">1 / 22 GEGENSTÄNDE</small><b aria-hidden="true">›</b></button>
 
         <div class="need-grid">
           <div class="need"><div><span>SATT</span><strong data-value="satiety">82%</strong></div><div class="meter" data-meter="satiety" role="progressbar" aria-label="Satt" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
@@ -121,6 +129,7 @@
         <button type="button" data-action="play"><span class="action-icon icon-ball" aria-hidden="true"></span><strong>SPIELEN</strong><small>Werfen</small></button>
         <button type="button" data-action="care"><span class="action-icon icon-brush" aria-hidden="true"></span><strong>PFLEGEN</strong><small>Mitmachen</small></button>
         <button type="button" data-action="together"><span class="action-icon icon-heart" aria-hidden="true">♥</span><strong>NÄHE</strong><small>Zusammen</small></button>
+        <button type="button" data-action="travel"><span class="action-icon icon-travel" aria-hidden="true">⌁</span><strong>REISE</strong><small>Losziehen</small></button>
         <button type="button" data-action="sleep" id="sleep-action"><span class="action-icon icon-moon" aria-hidden="true"></span><strong id="sleep-label">SCHLAFEN</strong><small>Licht aus</small></button>
       </nav>
     </main>
@@ -179,7 +188,42 @@
       <div class="travel-fact"><strong>WUSSTEST DU?</strong><span id="travel-dialog-fact"></span></div>
       <div class="travel-progress" aria-label="Fortschritt der Reise"><span id="travel-progress-fill"></span></div>
       <div class="travel-return"><strong id="travel-dialog-countdown">NOCH 2 STD.</strong><small>Dann kommt dein Capy von allein zurück.</small></div>
+      <div class="travel-companion" id="travel-companion" hidden><span id="travel-companion-icon">♢</span><p><small>REISEBEGLEITUNG</small><strong id="travel-companion-name">Hase Fips</strong></p></div>
+      <div class="travel-treasure"><span>?</span><p><small>IM REISEGEPÄCK</small><strong id="travel-reward-label">Ein noch unbekannter Fund</strong></p></div>
       <p class="travel-history" id="travel-history"></p>
+    </dialog>
+
+    <dialog class="sheet journey-sheet" id="journey-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">ÜBERRASCHUNGSREISE</p><h2 id="journey-title">Rucksack packen?</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="journey-hero" aria-hidden="true"><span>⌁</span><i>?</i><b>▣</b></div>
+      <p><strong id="journey-capy-name">Emmi</strong> wählt das Ziel ganz allein. Die Reise dauert zwei bis drei Stunden. Vielleicht kommt dein Capy mit einem neuen Kleidungsstück oder Gegenstand zurück.</p>
+      <div class="journey-rules"><span>?</span><strong>ZIEL BLEIBT EINE ÜBERRASCHUNG</strong><span>2–3 H</span></div>
+      <button class="primary-button" id="start-journey-button" type="button">JETZT AUF REISE SCHICKEN</button>
+      <button class="secondary-button" type="button" data-close>DOCH NOCH ZU HAUSE BLEIBEN</button>
+    </dialog>
+
+    <dialog class="sheet inventory-sheet" id="inventory-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">REISEFUNDE & GARDEROBE</p><h2>Capy-Rucksack</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="inventory-summary" id="inventory-summary"></div>
+      <div class="inventory-tabs" id="inventory-tabs" role="tablist" aria-label="Inventar filtern">
+        <button type="button" data-filter="all" class="is-active">ALLES</button>
+        <button type="button" data-filter="wearable">KLEIDUNG</button>
+        <button type="button" data-filter="placeable">WELT</button>
+        <button type="button" data-filter="harvest">ERNTE</button>
+      </div>
+      <p class="inventory-hint" id="inventory-hint">Jeder Kleidungsplatz kann nur einmal belegt werden. Ein neues Oberteil legt das vorherige automatisch zurück.</p>
+      <div class="inventory-grid" id="inventory-grid"></div>
+    </dialog>
+
+    <dialog class="sheet garden-sheet" id="garden-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">WÄCHST AUCH OFFLINE</p><h2>Capy-Gemüsegarten</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <p class="garden-intro">Wähle Saatgut und bepflanze ein freies Beet. Mit der gesammelten Gießkanne wächst alles schneller.</p>
+      <div class="seed-picker" id="seed-picker"></div>
+      <div class="garden-plots" id="garden-plots"></div>
+      <div class="harvest-pantry" id="harvest-pantry"></div>
     </dialog>
 
     <dialog class="sheet weather-sheet" id="weather-dialog">
@@ -253,6 +297,6 @@
       </form>
     </dialog>
 
-    <script type="module" src="./app.js?v=7"></script>
+    <script type="module" src="./app.js?v=8"></script>
   </body>
 </html>

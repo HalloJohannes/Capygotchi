@@ -40,11 +40,35 @@ import {
 } from "../public/capygotchi/quest-core.js";
 import {
   TRAVEL_DESTINATIONS,
+  departNow,
   destinationById,
   isTraveling,
   normalizeTravel,
   travelProgress,
 } from "../public/capygotchi/travel-core.js";
+import {
+  EQUIPMENT_SLOTS,
+  ITEM_DEFINITIONS,
+  addInventoryItem,
+  createInventory,
+  rewardForDestination,
+  toggleEquipment,
+  togglePlacedItem,
+} from "../public/capygotchi/inventory-core.js";
+import {
+  ANIMAL_FRIENDS,
+  CROPS,
+  WORLD_AREAS,
+  consumeHarvest,
+  createGarden,
+  createWorld,
+  harvestCrop,
+  normalizeWorld,
+  plantCrop,
+  selectCrop,
+  travelCompanion,
+  waterCrop,
+} from "../public/capygotchi/world-core.js";
 import { fallbackGermanyWeather, weatherFromApi } from "../public/capygotchi/weather.js";
 
 test("six needs continue changing while the app is closed", () => {
@@ -79,7 +103,7 @@ test("absence report explains offline progress without killing the pet", () => {
   assert.equal(report.elapsedMs, 6 * 3_600_000);
   assert.ok(report.changes.satiety < 0);
   assert.ok(report.state.satiety >= 0);
-  assert.equal(report.state.version, 5);
+  assert.equal(report.state.version, 6);
 });
 
 test("interactions stay within healthy stat limits", () => {
@@ -98,7 +122,7 @@ test("pet state remains valid, names stay compact, and Emmi is the default", () 
   assert.ok(state.name.length <= 14);
   assert.equal(state.satiety, 100);
   assert.equal(state.fun, 0);
-  assert.equal(state.version, 5);
+  assert.equal(state.version, 6);
   assert.equal(state.social, 84);
   assert.equal(makeState(1).name, "Emmi");
   assert.equal(makeState(1, "Goldie", "golden").furVariant, "golden");
@@ -158,8 +182,8 @@ test("pickles and onions are temporary foods with opposite emotional effects", (
   const windows = Array.from({ length: 16 }, (_, index) => foodAvailability("onion", state, state.adoptedAt + index * 90 * 60_000));
   assert.ok(windows.some((entry) => entry.available));
   assert.ok(windows.some((entry) => !entry.available));
-  const pickle = applyChanges(state, { satiety: 9, fun: 13 });
-  const onion = applyChanges(state, { satiety: 2, fun: -18 });
+  const pickle = applyChanges(state, { satiety: 9, fun: 13 }, state.updatedAt);
+  const onion = applyChanges(state, { satiety: 2, fun: -18 }, state.updatedAt);
   assert.ok(pickle.fun > state.fun);
   assert.ok(onion.fun < state.fun);
 });
@@ -180,6 +204,85 @@ test("solo trips are deterministic, last two to three hours, and return with a s
   assert.equal(travel.completedTrips, 1);
   assert.ok(travel.lastSouvenir);
   assert.ok(TRAVEL_DESTINATIONS.length >= 8);
+});
+
+test("a player can send the Capy on a destination-blind surprise trip", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  const travel = departNow(null, now - 86_400_000, now, "emmi:surprise");
+
+  assert.equal(travel.status, "away");
+  assert.equal(travel.initiatedBy, "player");
+  assert.ok(destinationById(travel.destinationId));
+  assert.ok(travel.returnsAt - travel.departedAt >= 120 * 60_000);
+  assert.ok(travel.returnsAt - travel.departedAt <= 180 * 60_000);
+  const stillAway = departNow(travel, now - 86_400_000, now + 1, "emmi:surprise");
+  assert.equal(stillAway.destinationId, travel.destinationId);
+  assert.equal(stillAway.departedAt, travel.departedAt);
+  assert.equal(stillAway.returnsAt, travel.returnsAt);
+});
+
+test("the collection has exclusive clothing slots and placeable finds", () => {
+  let inventory = createInventory();
+  assert.deepEqual(inventory.ownedItemIds, ["berry_cap"]);
+  for (const id of ["forest_vest", "cloud_sweater", "watering_can"]) {
+    inventory = addInventoryItem(inventory, id, 100).inventory;
+  }
+
+  inventory = toggleEquipment(inventory, "forest_vest").inventory;
+  const swapped = toggleEquipment(inventory, "cloud_sweater");
+  assert.equal(swapped.replacedId, "forest_vest");
+  assert.equal(swapped.inventory.equipped.body, "cloud_sweater");
+  assert.equal(Object.values(swapped.inventory.equipped).filter(Boolean).length, 1);
+
+  const placed = togglePlacedItem(swapped.inventory, "watering_can");
+  assert.equal(placed.placed, true);
+  assert.deepEqual(placed.inventory.placedItemIds, ["watering_can"]);
+  assert.equal(togglePlacedItem(placed.inventory, "watering_can").placed, false);
+  assert.ok(Object.keys(ITEM_DEFINITIONS).length >= 20);
+  assert.ok(Object.values(ITEM_DEFINITIONS).filter((item) => item.type === "wearable").every((item) => EQUIPMENT_SLOTS[item.slot]));
+});
+
+test("travel finds prefer an unowned destination reward and never duplicate", () => {
+  let inventory = createInventory();
+  const rewardId = rewardForDestination(inventory, "kaffeewolken", "emmi:first");
+  assert.ok(rewardId);
+  assert.equal(inventory.ownedItemIds.includes(rewardId), false);
+  const first = addInventoryItem(inventory, rewardId, 100);
+  assert.equal(first.added, true);
+  const duplicate = addInventoryItem(first.inventory, rewardId, 200);
+  assert.equal(duplicate.added, false);
+  assert.equal(duplicate.inventory.ownedItemIds.filter((id) => id === rewardId).length, 1);
+});
+
+test("the Capy changes between four living areas and can meet travel companions", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  const initial = createWorld(now, "home", "emmi");
+  const moved = normalizeWorld(initial, initial.nextMoveAt + 1, "emmi");
+  assert.notEqual(moved.area, "home");
+  assert.ok(WORLD_AREAS[moved.area]);
+  assert.ok(Object.keys(WORLD_AREAS).includes("wintergarden"));
+  assert.ok(!moved.friendId || ANIMAL_FRIENDS[moved.friendId]);
+  const companion = travelCompanion({ ...moved, friendId: "duck" }, "emmi");
+  assert.equal(companion, "duck");
+});
+
+test("vegetables grow offline, watering helps, and harvest becomes food", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  let garden = selectCrop(createGarden(), "cucumber");
+  const planted = plantCrop(garden, 0, now);
+  assert.equal(planted.planted, true);
+  assert.equal(planted.garden.seeds.cucumber, 2);
+  const originalReadyAt = planted.garden.plots[0].readyAt;
+  const watered = waterCrop(planted.garden, 0, now + 30_000);
+  assert.equal(watered.watered, true);
+  assert.ok(watered.garden.plots[0].readyAt < originalReadyAt);
+  const harvested = harvestCrop(watered.garden, 0, watered.garden.plots[0].readyAt + 1);
+  assert.equal(harvested.harvested, true);
+  assert.equal(harvested.amount, CROPS.cucumber.yield + 1);
+  assert.equal(harvested.garden.plots[0], null);
+  const eaten = consumeHarvest(harvested.garden, "cucumber");
+  assert.equal(eaten.consumed, true);
+  assert.equal(eaten.garden.harvest.cucumber, harvested.amount - 1);
 });
 
 test("Germany weather averages four places and has a reliable offline season fallback", () => {
@@ -241,14 +344,17 @@ test("shared tasks progress only through matching completed interactions", () =>
   assert.equal(finished.lifetimeCompleted, 1);
 });
 
-test("state migration preserves Capys and adds quest progress without a reset", () => {
+test("state migration preserves Capys and adds quests, inventory, garden, and world without a reset", () => {
   const now = Date.UTC(2026, 7, 21, 12);
   const old = { ...makeState(now - 120_000, "Lotti"), version: 3, xp: 77, questProgress: null };
   const migrated = normalizeState(old, now);
   const quests = normalizeQuestProgress(migrated.questProgress, migrated.adoptedAt, now, "Lotti");
   assert.equal(migrated.name, "Lotti");
   assert.equal(migrated.xp, 77);
-  assert.equal(migrated.version, 5);
+  assert.equal(migrated.version, 6);
+  assert.deepEqual(migrated.inventory.ownedItemIds, ["berry_cap"]);
+  assert.equal(migrated.garden.plots.length, 4);
+  assert.ok(WORLD_AREAS[migrated.world.area]);
   assert.equal(quests.nextAt, migrated.adoptedAt + 60_000);
   assert.equal(questIsDue(quests, now), true);
 });
@@ -271,6 +377,11 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(html, /quest-game-dialog/);
   assert.match(html, /quest-alert/);
   assert.match(html, /travel-dialog/);
+  assert.match(html, /journey-dialog/);
+  assert.match(html, /inventory-dialog/);
+  assert.match(html, /garden-dialog/);
+  assert.match(html, /WINTERGARTEN/);
+  assert.match(html, /animal-visitor/);
   assert.match(html, /weather-dialog/);
   assert.match(html, /world-navigation/);
   assert.match(html, /DAMWILD-GEHEGE/);
@@ -286,14 +397,21 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(app, /startQuestGame/);
   assert.match(app, /switchToPet/);
   assert.match(app, /normalizeTravel/);
+  assert.match(app, /departNow/);
+  assert.match(app, /toggleEquipment/);
+  assert.match(app, /plantCrop/);
+  assert.match(app, /normalizeWorld/);
+  assert.doesNotMatch(app, /selectLandscapeArea/);
   assert.match(app, /foodAvailability/);
   assert.match(app, /loadGermanyWeather/);
   assert.equal(JSON.parse(manifest).display, "standalone");
-  assert.match(serviceWorker, /capygotchi-v7/);
+  assert.match(serviceWorker, /capygotchi-v8/);
   assert.match(serviceWorker, /dialogues\.js/);
   assert.match(serviceWorker, /pet-library\.js/);
   assert.match(serviceWorker, /quest-core\.js/);
   assert.match(serviceWorker, /quest-games\.js/);
   assert.match(serviceWorker, /travel-core\.js/);
+  assert.match(serviceWorker, /inventory-core\.js/);
+  assert.match(serviceWorker, /world-core\.js/);
   assert.match(serviceWorker, /weather\.js/);
 });
