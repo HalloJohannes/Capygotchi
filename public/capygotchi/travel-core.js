@@ -110,7 +110,7 @@ function homeDuration(returnedAt, seed, completedTrips) {
 function initialTravel(adoptedAt, seed) {
   const firstWait = (5 + (seedNumber(`${seed}:first-trip`) % 4)) * HOUR;
   return {
-    version: 2,
+    version: 3,
     status: "home",
     destinationId: null,
     departedAt: 0,
@@ -125,6 +125,8 @@ function initialTravel(adoptedAt, seed) {
     lastRewardId: null,
     companionId: null,
     lastCompanionId: null,
+    meetingFriendId: null,
+    lastMeetingFriendId: null,
     initiatedBy: "auto",
     returnPending: false,
   };
@@ -140,7 +142,7 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
   const travel = hadTravel ? {
     ...base,
     ...candidate,
-    version: 2,
+    version: 3,
     status: candidate.status === "away" && destinationById(candidate.destinationId) ? "away" : "home",
     destinationId: destinationById(candidate.destinationId) ? candidate.destinationId : null,
     departedAt: Math.max(0, Number(candidate.departedAt) || 0),
@@ -152,6 +154,8 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
     lastRewardId: typeof candidate.lastRewardId === "string" ? candidate.lastRewardId : null,
     companionId: typeof candidate.companionId === "string" ? candidate.companionId : null,
     lastCompanionId: typeof candidate.lastCompanionId === "string" ? candidate.lastCompanionId : null,
+    meetingFriendId: typeof candidate.meetingFriendId === "string" ? candidate.meetingFriendId : null,
+    lastMeetingFriendId: typeof candidate.lastMeetingFriendId === "string" ? candidate.lastMeetingFriendId : null,
     initiatedBy: candidate.initiatedBy === "player" ? "player" : "auto",
     returnPending: Boolean(candidate.returnPending),
   } : base;
@@ -166,9 +170,11 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
     travel.lastSouvenir = destination?.souvenir || "eine schöne Erinnerung";
     travel.lastRewardId = travel.rewardId;
     travel.lastCompanionId = travel.companionId;
+    travel.lastMeetingFriendId = travel.meetingFriendId;
     travel.destinationId = null;
     travel.rewardId = null;
     travel.companionId = null;
+    travel.meetingFriendId = null;
     travel.departedAt = 0;
     travel.nextDepartureAt = travel.returnsAt + homeDuration(travel.returnsAt, seed, travel.completedTrips);
     travel.returnsAt = 0;
@@ -187,6 +193,7 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
       travel.returnsAt = returnsAt;
       travel.rewardId = null;
       travel.companionId = null;
+      travel.meetingFriendId = null;
       travel.initiatedBy = "auto";
       travel.returnPending = false;
       break;
@@ -198,6 +205,7 @@ export function normalizeTravel(candidate, adoptedAt, now = Date.now(), seed = "
     travel.lastSouvenir = plan.destination.souvenir;
     travel.lastRewardId = null;
     travel.lastCompanionId = null;
+    travel.lastMeetingFriendId = null;
     travel.nextDepartureAt = returnsAt + homeDuration(returnsAt, seed, travel.completedTrips);
     loops += 1;
   }
@@ -214,7 +222,7 @@ export function departNow(candidate, adoptedAt, now = Date.now(), seed = "capy")
   const plan = tripPlan(now, `${seed}:player`, travel.completedTrips);
   return {
     ...travel,
-    version: 2,
+    version: 3,
     status: "away",
     destinationId: plan.destination.id,
     departedAt: now,
@@ -222,6 +230,7 @@ export function departNow(candidate, adoptedAt, now = Date.now(), seed = "capy")
     nextDepartureAt: 0,
     rewardId: null,
     companionId: null,
+    meetingFriendId: null,
     initiatedBy: "player",
     returnPending: false,
   };

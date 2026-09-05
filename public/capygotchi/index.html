@@ -11,7 +11,7 @@
     <meta name="format-detection" content="telephone=no" />
     <title>Capygotchi</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=8" />
+    <link rel="stylesheet" href="./styles.css?v=9" />
   </head>
   <body>
     <main class="app-shell" id="app">
@@ -102,7 +102,10 @@
           <div class="mood mood-happy" id="mood"><span aria-hidden="true">♥</span> GLÜCKLICH</div>
         </div>
 
-        <button class="collection-button" id="inventory-button" type="button"><span aria-hidden="true">▣</span><strong>RUCKSACK & SAMMLUNG</strong><small id="inventory-count">1 / 22 GEGENSTÄNDE</small><b aria-hidden="true">›</b></button>
+        <div class="collection-buttons">
+          <button class="collection-button" id="inventory-button" type="button"><span aria-hidden="true">▣</span><strong>RUCKSACK & SAMMLUNG</strong><small id="inventory-count">1 / 22 GEGENSTÄNDE</small><b aria-hidden="true">›</b></button>
+          <button class="collection-button friendbook-button" id="friendbook-button" type="button"><span aria-hidden="true">♥</span><strong>FREUNDEBUCH</strong><small id="friendbook-count">0 / 16 FREUNDE</small><em id="friendbook-badge" hidden>NEU</em><b aria-hidden="true">›</b></button>
+        </div>
 
         <div class="need-grid">
           <div class="need"><div><span>SATT</span><strong data-value="satiety">82%</strong></div><div class="meter" data-meter="satiety" role="progressbar" aria-label="Satt" aria-valuemin="0" aria-valuemax="100"><span></span></div></div>
@@ -197,7 +200,7 @@
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-title"><div><p class="sheet-kicker">ÜBERRASCHUNGSREISE</p><h2 id="journey-title">Rucksack packen?</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
       <div class="journey-hero" aria-hidden="true"><span>⌁</span><i>?</i><b>▣</b></div>
-      <p><strong id="journey-capy-name">Emmi</strong> wählt das Ziel ganz allein. Die Reise dauert zwei bis drei Stunden. Vielleicht kommt dein Capy mit einem neuen Kleidungsstück oder Gegenstand zurück.</p>
+      <p><strong id="journey-capy-name">Emmi</strong> wählt das Ziel ganz allein. Die Reise dauert zwei bis drei Stunden. Vielleicht kommt dein Capy mit einem neuen Fund zurück – oder lernt unterwegs einen Freund kennen.</p>
       <div class="journey-rules"><span>?</span><strong>ZIEL BLEIBT EINE ÜBERRASCHUNG</strong><span>2–3 H</span></div>
       <button class="primary-button" id="start-journey-button" type="button">JETZT AUF REISE SCHICKEN</button>
       <button class="secondary-button" type="button" data-close>DOCH NOCH ZU HAUSE BLEIBEN</button>
@@ -215,6 +218,14 @@
       </div>
       <p class="inventory-hint" id="inventory-hint">Jeder Kleidungsplatz kann nur einmal belegt werden. Ein neues Oberteil legt das vorherige automatisch zurück.</p>
       <div class="inventory-grid" id="inventory-grid"></div>
+    </dialog>
+
+    <dialog class="sheet friendbook-sheet" id="friendbook-dialog">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title"><div><p class="sheet-kicker">REISEBEKANNTSCHAFTEN</p><h2 id="friendbook-title">Emmis Freundebuch</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <div class="friendbook-summary" id="friendbook-summary"></div>
+      <p class="friendbook-intro">Auf Reisen kann dein Capy neue Tiere kennenlernen. Ihre Geschichten, Lieblingssachen und Charakterzüge bleiben hier erhalten.</p>
+      <div class="friendbook-grid" id="friendbook-grid"></div>
     </dialog>
 
     <dialog class="sheet garden-sheet" id="garden-dialog">
@@ -297,6 +308,6 @@
       </form>
     </dialog>
 
-    <script type="module" src="./app.js?v=8"></script>
+    <script type="module" src="./app.js?v=9"></script>
   </body>
 </html>

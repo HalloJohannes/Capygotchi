@@ -15,10 +15,18 @@ import {
   levelInfo,
   makeState,
   moodFor,
+  sortFoodEntriesBySatiety,
   statusPhrase,
-} from "./game-core.js?v=8";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=8";
-import { dialogueFor } from "./dialogues.js?v=8";
+} from "./game-core.js?v=9";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=9";
+import { dialogueFor } from "./dialogues.js?v=9";
+import {
+  friendBookCompletion,
+  friendForId,
+  markFriendBookSeen,
+  meetTravelFriend,
+  travelFriendFor,
+} from "./friendbook-core.js?v=9";
 import {
   LIBRARY_KEY,
   activeProfile,
@@ -28,7 +36,7 @@ import {
   removeProfile,
   selectProfile,
   updateProfile,
-} from "./pet-library.js?v=8";
+} from "./pet-library.js?v=9";
 import {
   QUEST_DEFINITIONS,
   activateQuest,
@@ -39,8 +47,8 @@ import {
   questTimeLabel,
   recordQuestAction,
   taskQuestComplete,
-} from "./quest-core.js?v=8";
-import { startQuestGame } from "./quest-games.js?v=8";
+} from "./quest-core.js?v=9";
+import { startQuestGame } from "./quest-games.js?v=9";
 import {
   departNow,
   destinationById,
@@ -48,8 +56,8 @@ import {
   normalizeTravel,
   travelProgress,
   travelTimeLabel,
-} from "./travel-core.js?v=8";
-import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=8";
+} from "./travel-core.js?v=9";
+import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=9";
 import {
   EQUIPMENT_SLOTS,
   ITEM_DEFINITIONS,
@@ -59,7 +67,7 @@ import {
   rewardForDestination,
   toggleEquipment,
   togglePlacedItem,
-} from "./inventory-core.js?v=8";
+} from "./inventory-core.js?v=9";
 import {
   ANIMAL_FRIENDS,
   CROPS,
@@ -74,7 +82,7 @@ import {
   selectCrop,
   travelCompanion,
   waterCrop,
-} from "./world-core.js?v=8";
+} from "./world-core.js?v=9";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -146,8 +154,10 @@ const elements = {
   weatherTemperature: $("#weather-temperature"),
   journeyDialog: $("#journey-dialog"),
   inventoryDialog: $("#inventory-dialog"),
+  friendbookDialog: $("#friendbook-dialog"),
   gardenDialog: $("#garden-dialog"),
   inventoryGrid: $("#inventory-grid"),
+  friendbookGrid: $("#friendbook-grid"),
   gardenPlots: $("#garden-plots"),
   animalVisitor: $("#animal-visitor"),
   outfitLayer: $("#outfit-layer"),
@@ -232,6 +242,14 @@ function prepareTravelCargo() {
   if (state.travel.companionId === null || state.travel.companionId === undefined) {
     state.travel.companionId = travelCompanion(state.world, `${travelSeed()}:${state.travel.destinationId}:${state.travel.departedAt}`);
   }
+  if (state.travel.meetingFriendId === null || state.travel.meetingFriendId === undefined) {
+    const meetingFriend = travelFriendFor(
+      state.travel.destinationId,
+      state.friendBook,
+      `${travelSeed()}:${state.travel.destinationId}:${state.travel.departedAt}:friend`,
+    );
+    state.travel.meetingFriendId = meetingFriend?.id || null;
+  }
 }
 
 function syncTravelState(now = Date.now()) {
@@ -248,19 +266,39 @@ function syncTravelState(now = Date.now()) {
     const rewardId = state.travel.lastRewardId || rewardForDestination(state.inventory, state.travel.lastDestinationId, `${travelSeed()}:return:${state.travel.completedTrips}`);
     const reward = rewardId ? ITEM_DEFINITIONS[rewardId] : null;
     const companion = ANIMAL_FRIENDS[state.travel.lastCompanionId];
+    const meetingProfile = friendForId(state.travel.lastMeetingFriendId)
+      || travelFriendFor(
+        state.travel.lastDestinationId,
+        state.friendBook,
+        `${travelSeed()}:${state.travel.lastReturnAt}:${state.travel.completedTrips}:friend`,
+      );
+    const tripKey = `${state.travel.lastReturnAt}:${state.travel.lastDestinationId}:${state.travel.completedTrips}`;
+    const meeting = meetTravelFriend(
+      state.friendBook,
+      meetingProfile?.id,
+      state.travel.lastDestinationId,
+      state.travel.lastReturnAt || now,
+      tripKey,
+    );
+    state.friendBook = meeting.friendBook;
     const inventoryResult = rewardId ? addInventoryItem(state.inventory, rewardId, now) : { inventory: state.inventory, added: false };
     state.inventory = inventoryResult.inventory;
     if (!reward) {
       state.garden = normalizeGarden(state.garden);
       state.garden.seeds = Object.fromEntries(Object.entries(state.garden.seeds).map(([key, amount]) => [key, amount + 1]));
     }
-    state.travel = { ...state.travel, returnPending: false, lastRewardId: rewardId };
-    state = applyChanges(state, { curiosity: 9, fun: 5, social: -2, energy: -4, xp: 12 });
+    state.travel = { ...state.travel, returnPending: false, lastRewardId: rewardId, lastMeetingFriendId: meeting.friend?.id || null };
+    state = applyChanges(state, { curiosity: 9, fun: 5, social: meeting.friend ? 7 : companion ? 4 : -2, energy: -4, xp: 12 });
     const findText = reward ? `${reward.label} für unsere Sammlung` : "ein buntes Samentütchen für den Garten";
     const companionText = companion ? ` Zusammen mit ${companion.label}.` : "";
-    remember(`${state.name} ist aus ${destination?.title || "einem Abenteuer"} zurück und brachte ${findText} mit.${companionText}`, reward?.icon || "⌁");
-    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe ${findText} mitgebracht.${companion ? ` ${companion.label} war dabei!` : ""}`;
-    showToast(`${state.name.toUpperCase()} IST ZURÜCK · ${reward?.label?.toUpperCase() || "NEUE SAMEN"}!`, 5200);
+    const meetingText = meeting.friend
+      ? ` Dort habe ich ${meeting.friend.name} ${meeting.firstMeeting ? "kennengelernt" : "wiedergesehen"}!`
+      : "";
+    remember(`${state.name} ist aus ${destination?.title || "einem Abenteuer"} zurück, brachte ${findText} mit.${companionText}${meeting.friend ? ` ${meeting.friend.name} steht jetzt im Freundebuch.` : ""}`, meeting.friend?.icon || reward?.icon || "⌁");
+    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe ${findText} mitgebracht.${companion ? ` ${companion.label} war dabei!` : ""}${meetingText}`;
+    showToast(meeting.friend
+      ? `${state.name.toUpperCase()} IST ZURÜCK · ${meeting.firstMeeting ? "NEUER FREUND" : "WIEDERSEHEN"}: ${meeting.friend.name.toUpperCase()}!`
+      : `${state.name.toUpperCase()} IST ZURÜCK · ${reward?.label?.toUpperCase() || "NEUE SAMEN"}!`, 5600);
   } else if (traveling) {
     const destination = destinationById(state.travel.destinationId);
     const companion = ANIMAL_FRIENDS[state.travel.companionId];
@@ -514,6 +552,59 @@ function openInventory(filter = "all") {
   closeTray();
   renderInventory(filter);
   openDialog(elements.inventoryDialog);
+}
+
+function renderFriendBook() {
+  const completion = friendBookCompletion(state.friendBook);
+  const unseenIds = new Set(state.friendBook?.unseenIds || []);
+  $("#friendbook-title").textContent = `${state.name}s Freundebuch`;
+  $("#friendbook-summary").innerHTML = `
+    <div><strong>${completion.met}/${completion.total}</strong><small>FREUNDE</small></div>
+    <div><strong>${completion.meetings}</strong><small>BEGEGNUNGEN</small></div>
+    <div><strong>${completion.unseen ? `+${completion.unseen}` : "♥"}</strong><small>${completion.unseen ? "NEU" : "VERBUNDEN"}</small></div>`;
+  elements.friendbookGrid.replaceChildren();
+  if (!completion.met) {
+    const empty = document.createElement("article");
+    empty.className = "friendbook-empty";
+    empty.innerHTML = "<span>♥</span><strong>Das erste Kapitel wartet schon</strong><small>Schick dein Capy auf Reisen. Vielleicht kommt es mit einer ganz besonderen Bekanntschaft zurück.</small>";
+    elements.friendbookGrid.append(empty);
+    return;
+  }
+  for (const entry of state.friendBook.friends) {
+    const friend = friendForId(entry.id);
+    if (!friend) continue;
+    const destination = destinationById(friend.destinationId);
+    const date = entry.firstMetAt
+      ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(entry.firstMetAt)
+      : "auf einer früheren Reise";
+    const card = document.createElement("article");
+    card.className = `friend-card${unseenIds.has(friend.id) ? " is-new" : ""}`;
+    card.innerHTML = `
+      <div class="friend-card-heading"><span>${friend.icon}</span><div><small>${friend.species}</small><strong>${friend.name}</strong><em>${destination?.title || friend.home}</em></div>${unseenIds.has(friend.id) ? "<b>NEU</b>" : ""}</div>
+      <p>${friend.description}</p>
+      <div class="friend-traits">${friend.traits.map((trait) => `<span>${trait}</span>`).join("")}</div>
+      <dl><div><dt>MAG BESONDERS</dt><dd>${friend.likes.join(" · ")}</dd></div><div><dt>WOHNT</dt><dd>${friend.home}</dd></div></dl>
+      <blockquote>„${friend.quote}“</blockquote>
+      <footer>Kennengelernt am ${date} · ${entry.meetings} ${entry.meetings === 1 ? "Begegnung" : "Begegnungen"}</footer>`;
+    elements.friendbookGrid.append(card);
+  }
+  const remaining = completion.total - completion.met;
+  if (remaining > 0) {
+    const locked = document.createElement("div");
+    locked.className = "friendbook-locked";
+    locked.textContent = `${"? ".repeat(Math.min(remaining, 6)).trim()} · NOCH ${remaining} REISEFREUNDE WARTEN`;
+    elements.friendbookGrid.append(locked);
+  }
+}
+
+function openFriendBook() {
+  if (!hasStoredState || interactionBusy) return;
+  closeTray();
+  renderFriendBook();
+  openDialog(elements.friendbookDialog);
+  state.friendBook = markFriendBookSeen(state.friendBook);
+  $("#friendbook-badge").hidden = true;
+  saveState();
 }
 
 function useInventoryItem(itemId) {
@@ -862,6 +953,9 @@ function render(now = Date.now()) {
   elements.speech.textContent = currentPhrase;
   const collection = inventoryCompletion(state.inventory);
   $("#inventory-count").textContent = `${collection.owned} / ${collection.total} GEGENSTÄNDE`;
+  const friendships = friendBookCompletion(state.friendBook);
+  $("#friendbook-count").textContent = `${friendships.met} / ${friendships.total} FREUNDE`;
+  $("#friendbook-badge").hidden = friendships.unseen === 0;
 
   for (const key of NEED_KEYS) {
     const rounded = Math.round(state[key]);
@@ -883,6 +977,7 @@ function render(now = Date.now()) {
   renderWeather();
   renderQuestIndicator(now);
   if (elements.inventoryDialog.open) renderInventory();
+  if (elements.friendbookDialog.open) renderFriendBook();
   if (elements.gardenDialog.open) renderGarden(now);
   saveState();
 }
@@ -979,7 +1074,7 @@ function trayEntries(category, group) {
   const harvest = Object.values(CROPS)
     .filter((crop) => state.garden.harvest[crop.id] > 0)
     .map((crop) => [`harvest-${crop.id}`, itemFor("feed", `harvest-${crop.id}`)]);
-  return [...harvest, ...entries];
+  return sortFoodEntriesBySatiety([...harvest, ...entries]);
 }
 
 function sceneObject(key, x, y, className = "") {
@@ -1023,7 +1118,7 @@ function openTray(category) {
   elements.trayKicker.textContent = group.kicker;
   elements.trayTitle.textContent = group.title.replace("{name}", state.name);
   elements.trayInstruction.textContent = category === "feed"
-    ? `${group.instruction} Seltene Markt-Snacks tauchen nur zeitweise auf.`
+    ? `${group.instruction} Sättigendstes steht zuerst; seltene Markt-Snacks tauchen nur zeitweise auf.`
     : group.instruction;
   elements.trayProgress.hidden = true;
   elements.trayProgress.querySelector("span").style.width = "0%";
@@ -1583,7 +1678,7 @@ function renderLibrary() {
     const name = document.createElement("strong");
     name.textContent = preview.name;
     const meta = document.createElement("small");
-    meta.textContent = `TAG ${dayNumber(preview)} · LV. ${levelInfo(preview.xp).level} · ${mood.label}`;
+    meta.textContent = `TAG ${dayNumber(preview)} · LV. ${levelInfo(preview.xp).level} · ${mood.label} · ♥ ${friendBookCompletion(preview.friendBook).met}`;
     const visit = document.createElement("span");
     const previewQuests = normalizeQuestProgress(preview.questProgress, preview.adoptedAt, Date.now(), `${profile.id}:${preview.name}`);
     const destination = isTraveling(previewTravel) ? destinationById(previewTravel.destinationId) : null;
@@ -1632,6 +1727,7 @@ function resetSceneForSwitch() {
   if (elements.travelDialog.open) elements.travelDialog.close();
   if (elements.journeyDialog.open) elements.journeyDialog.close();
   if (elements.inventoryDialog.open) elements.inventoryDialog.close();
+  if (elements.friendbookDialog.open) elements.friendbookDialog.close();
   if (elements.gardenDialog.open) elements.gardenDialog.close();
   closeTray();
   if (bubbleSession) window.clearTimeout(bubbleSession.timer);
@@ -1780,6 +1876,7 @@ $("#settings-button").addEventListener("click", () => { syncSettingsForm(); open
 $("#weather-button").addEventListener("click", openWeatherDetails);
 elements.travelPostcard.addEventListener("click", openTravelDetails);
 $("#inventory-button").addEventListener("click", () => openInventory("all"));
+$("#friendbook-button").addEventListener("click", openFriendBook);
 $("#start-journey-button").addEventListener("click", startManualJourney);
 
 $("#inventory-tabs").addEventListener("click", (event) => {
