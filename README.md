@@ -6,7 +6,7 @@ Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Brows
 
 ## Was Emmi kann
 
-- Futter per Touch zur Schnute ziehen und beim Fressen zusehen
+- Futter nach Sättigung sortiert auswählen, per Touch zur Schnute ziehen und beim Fressen zusehen
 - Ball und Frisbee werfen, Seifenblasen jagen und am Zerrseil spielen
 - Das Fell selbst bürsten, trockenrubbeln und Emmi sichtbar in den Teich springen lassen
 - Kuscheln, reden, Sonnenbaden und gemeinsam das Gehege erkunden
@@ -24,13 +24,14 @@ Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Brows
 - Milchaufschäumer, Gießkanne, Brettspiel, Picknickdecke, Radio und weitere Fundstücke werden in ihrem passenden Landschaftsbereich sichtbar
 - Vier Gemüsebeete mit Karotten, Tomaten, Gurken und Minikürbissen; Pflanzen wachsen auch bei geschlossener App weiter und die Ernte kann direkt verfüttert werden
 - Tierfreunde wie Hilda, Fips, Lotte, Piek, Wolke und Greta kommen zu Besuch und können ein Capy auf Reisen begleiten
+- Persönliches Freundebuch pro Capy mit 16 Reisebekanntschaften, Charakterzügen, Lieblingssachen, Zitaten und wiederkehrenden Begegnungen
 - Ungefähres Live-Wetter für Deutschland aus Hamburg, Berlin, Frankfurt und München mit jahreszeitlichem Offline-Fallback
 - Zeitweise Markt-Snacks: geliebte Gewürzgurken und ausdrücklich gehasste Zwiebeln mit eigenen sichtbaren Reaktionen
 - Tagebuch mit gemeinsamen Erinnerungen
 - „Während du weg warst“-Bericht beim Wiederöffnen
 - Mehrere Capys in einer Bibliothek anlegen und jederzeit zwischen ihren getrennten Spielständen wechseln
 - Fünf Tagesquests pro Capy mit eigenem Quest-Tagebuch, Glitzerbelohnungen und Tages-Serie
-- Sechs komplexere Minispiele: Glitzerjagd, Merkspiel, Kaffee-Timing, zwiebelfreies Grillfest, Stadt-Tour und Seerosen-Rhythmus
+- Sechs komplexere Minispiele: Glitzerjagd, Merkspiel, Kaffee-Timing mit schrumpfender Zielzone, zwiebelfreies Grillfest, Stadt-Tour als Merkstrecke und Seerosen-Rhythmus mit sechs Blättern
 - Gemeinsame Herausforderungen, die Füttern, Spielen, Pflegen, Gespräche und Ausflüge miteinander verbinden
 - Die erste Quest erscheint genau eine Minute nach der Adoption; weitere Abenteuer verteilen sich über den Tag
 - Vier wählbare Fellfarben für eine unverwechselbare Capy-Familie

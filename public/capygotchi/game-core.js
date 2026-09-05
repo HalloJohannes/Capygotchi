@@ -1,5 +1,6 @@
-import { createInventory, normalizeInventory } from "./inventory-core.js?v=8";
-import { createGarden, createWorld, normalizeGarden, normalizeWorld } from "./world-core.js?v=8";
+import { createFriendBook, normalizeFriendBook } from "./friendbook-core.js?v=9";
+import { createInventory, normalizeInventory } from "./inventory-core.js?v=9";
+import { createGarden, createWorld, normalizeGarden, normalizeWorld } from "./world-core.js?v=9";
 
 export const STORAGE_KEY = "capygotchi-state-v1";
 export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cream"]);
@@ -7,7 +8,7 @@ export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cr
 export const NEED_KEYS = Object.freeze(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
 
 export const DEFAULT_STATE = Object.freeze({
-  version: 6,
+  version: 7,
   name: "Emmi",
   furVariant: "classic",
   adoptedAt: 0,
@@ -29,6 +30,7 @@ export const DEFAULT_STATE = Object.freeze({
   travel: null,
   landscapeArea: "home",
   inventory: null,
+  friendBook: null,
   garden: null,
   world: null,
 });
@@ -75,6 +77,7 @@ export function makeState(now = Date.now(), name = "Emmi", furVariant = "classic
     updatedAt: now,
     memories: [],
     inventory: createInventory(),
+    friendBook: createFriendBook(),
     garden: createGarden(),
     world: createWorld(now, "home", name),
   };
@@ -107,7 +110,7 @@ export function normalizeState(candidate, now = Date.now()) {
   return {
     ...base,
     ...candidate,
-    version: 6,
+    version: 7,
     name: cleanName(candidate.name),
     furVariant: FUR_VARIANTS.includes(candidate.furVariant) ? candidate.furVariant : "classic",
     adoptedAt: Number.isFinite(candidate.adoptedAt) && candidate.adoptedAt > 0 ? candidate.adoptedAt : now,
@@ -129,9 +132,14 @@ export function normalizeState(candidate, now = Date.now()) {
     travel: candidate.travel && typeof candidate.travel === "object" ? candidate.travel : null,
     landscapeArea: ["home", "meadow", "garden", "wintergarden"].includes(candidate.landscapeArea) ? candidate.landscapeArea : "home",
     inventory: normalizeInventory(candidate.inventory),
+    friendBook: normalizeFriendBook(candidate.friendBook),
     garden: normalizeGarden(candidate.garden),
     world: normalizeWorld(candidate.world || { area: candidate.landscapeArea }, now, `${candidate.name || base.name}:${candidate.adoptedAt || now}`),
   };
+}
+
+export function sortFoodEntriesBySatiety(entries) {
+  return [...entries].sort(([, first], [, second]) => (Number(second?.satiety) || 0) - (Number(first?.satiety) || 0));
 }
 
 function foodSeed(state) {

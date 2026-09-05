@@ -1,19 +1,20 @@
-const CACHE_NAME = "capygotchi-v8";
+const CACHE_NAME = "capygotchi-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=8",
-  "./game-core.js?v=8",
-  "./pet-art.js?v=8",
-  "./dialogues.js?v=8",
-  "./pet-library.js?v=8",
-  "./quest-core.js?v=8",
-  "./quest-games.js?v=8",
-  "./travel-core.js?v=8",
-  "./weather.js?v=8",
-  "./inventory-core.js?v=8",
-  "./world-core.js?v=8",
-  "./app.js?v=8",
+  "./styles.css?v=9",
+  "./game-core.js?v=9",
+  "./pet-art.js?v=9",
+  "./dialogues.js?v=9",
+  "./pet-library.js?v=9",
+  "./quest-core.js?v=9",
+  "./quest-games.js?v=9",
+  "./travel-core.js?v=9",
+  "./weather.js?v=9",
+  "./inventory-core.js?v=9",
+  "./world-core.js?v=9",
+  "./friendbook-core.js?v=9",
+  "./app.js?v=9",
   "./manifest.webmanifest",
 ];
 

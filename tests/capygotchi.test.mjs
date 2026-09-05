@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  FOODS,
   absenceReport,
   addMemory,
   advanceState,
@@ -13,6 +14,7 @@ import {
   makeState,
   moodFor,
   normalizeState,
+  sortFoodEntriesBySatiety,
   statusPhrase,
 } from "../public/capygotchi/game-core.js";
 import { DIALOGUES, dialogueFor } from "../public/capygotchi/dialogues.js";
@@ -70,6 +72,24 @@ import {
   waterCrop,
 } from "../public/capygotchi/world-core.js";
 import { fallbackGermanyWeather, weatherFromApi } from "../public/capygotchi/weather.js";
+import {
+  FRIEND_PROFILES,
+  createFriendBook,
+  friendBookCompletion,
+  markFriendBookSeen,
+  meetTravelFriend,
+  travelFriendFor,
+} from "../public/capygotchi/friendbook-core.js";
+import {
+  CITY_ROUTE_PREVIEW_SECONDS,
+  COFFEE_SWEETSPOT_WIDTHS,
+  RHYTHM_COLORS,
+  cityRouteScore,
+  coffeeRoundScore,
+  createCityRoute,
+  nextRhythmStep,
+  rhythmScore,
+} from "../public/capygotchi/quest-games.js";
 
 test("six needs continue changing while the app is closed", () => {
   const start = Date.UTC(2026, 7, 21, 12);
@@ -103,7 +123,7 @@ test("absence report explains offline progress without killing the pet", () => {
   assert.equal(report.elapsedMs, 6 * 3_600_000);
   assert.ok(report.changes.satiety < 0);
   assert.ok(report.state.satiety >= 0);
-  assert.equal(report.state.version, 6);
+  assert.equal(report.state.version, 7);
 });
 
 test("interactions stay within healthy stat limits", () => {
@@ -122,7 +142,7 @@ test("pet state remains valid, names stay compact, and Emmi is the default", () 
   assert.ok(state.name.length <= 14);
   assert.equal(state.satiety, 100);
   assert.equal(state.fun, 0);
-  assert.equal(state.version, 6);
+  assert.equal(state.version, 7);
   assert.equal(state.social, 84);
   assert.equal(makeState(1).name, "Emmi");
   assert.equal(makeState(1, "Goldie", "golden").furVariant, "golden");
@@ -188,6 +208,39 @@ test("pickles and onions are temporary foods with opposite emotional effects", (
   assert.ok(onion.fun < state.fun);
 });
 
+test("visible food and garden harvests sort from most to least filling", () => {
+  const entries = [
+    ...Object.values(CROPS).map((crop) => [`harvest-${crop.id}`, crop.food]),
+    ...Object.entries(FOODS),
+  ];
+  const originalKeys = entries.map(([key]) => key);
+  const sorted = sortFoodEntriesBySatiety(entries);
+  assert.deepEqual(sorted.map(([key]) => key), [
+    "melon", "harvest-pumpkin", "pumpkin", "harvest-carrot", "carrot",
+    "harvest-tomato", "apple", "harvest-cucumber", "pickle", "onion",
+  ]);
+  assert.deepEqual(entries.map(([key]) => key), originalKeys);
+});
+
+test("cozy minigames add tension without hard failure", () => {
+  assert.deepEqual(COFFEE_SWEETSPOT_WIDTHS, [24, 21, 18, 15, 12]);
+  assert.ok(COFFEE_SWEETSPOT_WIDTHS.every((width, index) => index === 0 || width < COFFEE_SWEETSPOT_WIDTHS[index - 1]));
+  COFFEE_SWEETSPOT_WIDTHS.forEach((width, index) => {
+    assert.equal(coffeeRoundScore(50, index), 20);
+    assert.equal(coffeeRoundScore(50 + width / 2, index), 20);
+    assert.equal(coffeeRoundScore(50 + width / 2 + 1, index), 12);
+  });
+  assert.equal(CITY_ROUTE_PREVIEW_SECONDS, 6);
+  assert.deepEqual(createCityRoute(() => 0.42).map((place) => place.id).sort(), ["cafe", "game", "park", "pond", "view"]);
+  assert.equal(cityRouteScore(0, 0), 100);
+  assert.equal(cityRouteScore(2, 0), 84);
+  assert.equal(cityRouteScore(20, 1), 40);
+  assert.equal(RHYTHM_COLORS.length, 6);
+  assert.notEqual(nextRhythmStep(0, () => 0), 0);
+  assert.equal(rhythmScore(1), 90);
+  assert.equal(rhythmScore(9), 40);
+});
+
 test("solo trips are deterministic, last two to three hours, and return with a souvenir", () => {
   const adoptedAt = Date.UTC(2026, 7, 1, 9);
   const seed = "emmi:reise";
@@ -219,6 +272,43 @@ test("a player can send the Capy on a destination-blind surprise trip", () => {
   assert.equal(stillAway.destinationId, travel.destinationId);
   assert.equal(stillAway.departedAt, travel.departedAt);
   assert.equal(stillAway.returnsAt, travel.returnsAt);
+});
+
+test("travel transfers a newly met friend into the completed trip", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  const adoptedAt = now - 86_400_000;
+  let travel = departNow(null, adoptedAt, now, "emmi:friend-trip");
+  travel.meetingFriendId = "fiete";
+  const returnsAt = travel.returnsAt;
+  travel = normalizeTravel(travel, adoptedAt, returnsAt + 1, "emmi:friend-trip");
+  assert.equal(travel.status, "home");
+  assert.equal(travel.lastMeetingFriendId, "fiete");
+  assert.equal(travel.meetingFriendId, null);
+  assert.equal(travel.version, 3);
+});
+
+test("each Capy gets a persistent, idempotent travel friend book", () => {
+  assert.equal(new Set(FRIEND_PROFILES.map((friend) => friend.id)).size, FRIEND_PROFILES.length);
+  assert.equal(FRIEND_PROFILES.length, 16);
+  assert.ok(FRIEND_PROFILES.every((friend) => friend.traits.length >= 3 && friend.likes.length >= 2));
+  for (const destination of TRAVEL_DESTINATIONS) {
+    assert.equal(FRIEND_PROFILES.filter((friend) => friend.destinationId === destination.id).length, 2);
+  }
+  const empty = createFriendBook();
+  const firstChoice = travelFriendFor("speicherstadt", empty, "emmi:fixed");
+  const sameChoice = travelFriendFor("speicherstadt", empty, "emmi:fixed");
+  assert.equal(firstChoice.id, sameChoice.id);
+  const first = meetTravelFriend(empty, firstChoice.id, "speicherstadt", 100, "trip-1");
+  assert.equal(first.firstMeeting, true);
+  assert.equal(friendBookCompletion(first.friendBook).unseen, 1);
+  const duplicate = meetTravelFriend(first.friendBook, firstChoice.id, "speicherstadt", 200, "trip-1");
+  assert.equal(duplicate.processed, false);
+  assert.equal(duplicate.friendBook.friends[0].meetings, 1);
+  const reunion = meetTravelFriend(first.friendBook, firstChoice.id, "speicherstadt", 300, "trip-2");
+  assert.equal(reunion.firstMeeting, false);
+  assert.equal(reunion.friendBook.friends[0].meetings, 2);
+  assert.equal(reunion.friendBook.friends[0].firstMetAt, 100);
+  assert.equal(friendBookCompletion(markFriendBookSeen(reunion.friendBook)).unseen, 0);
 });
 
 test("the collection has exclusive clothing slots and placeable finds", () => {
@@ -344,17 +434,18 @@ test("shared tasks progress only through matching completed interactions", () =>
   assert.equal(finished.lifetimeCompleted, 1);
 });
 
-test("state migration preserves Capys and adds quests, inventory, garden, and world without a reset", () => {
+test("state migration preserves Capys and adds quests, inventory, garden, world, and friends without a reset", () => {
   const now = Date.UTC(2026, 7, 21, 12);
   const old = { ...makeState(now - 120_000, "Lotti"), version: 3, xp: 77, questProgress: null };
   const migrated = normalizeState(old, now);
   const quests = normalizeQuestProgress(migrated.questProgress, migrated.adoptedAt, now, "Lotti");
   assert.equal(migrated.name, "Lotti");
   assert.equal(migrated.xp, 77);
-  assert.equal(migrated.version, 6);
+  assert.equal(migrated.version, 7);
   assert.deepEqual(migrated.inventory.ownedItemIds, ["berry_cap"]);
   assert.equal(migrated.garden.plots.length, 4);
   assert.ok(WORLD_AREAS[migrated.world.area]);
+  assert.deepEqual(migrated.friendBook.friends, []);
   assert.equal(quests.nextAt, migrated.adoptedAt + 60_000);
   assert.equal(questIsDue(quests, now), true);
 });
@@ -379,6 +470,8 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(html, /travel-dialog/);
   assert.match(html, /journey-dialog/);
   assert.match(html, /inventory-dialog/);
+  assert.match(html, /friendbook-dialog/);
+  assert.match(html, /friendbook-button/);
   assert.match(html, /garden-dialog/);
   assert.match(html, /WINTERGARTEN/);
   assert.match(html, /animal-visitor/);
@@ -399,13 +492,15 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(app, /normalizeTravel/);
   assert.match(app, /departNow/);
   assert.match(app, /toggleEquipment/);
+  assert.match(app, /meetTravelFriend/);
+  assert.match(app, /sortFoodEntriesBySatiety/);
   assert.match(app, /plantCrop/);
   assert.match(app, /normalizeWorld/);
   assert.doesNotMatch(app, /selectLandscapeArea/);
   assert.match(app, /foodAvailability/);
   assert.match(app, /loadGermanyWeather/);
   assert.equal(JSON.parse(manifest).display, "standalone");
-  assert.match(serviceWorker, /capygotchi-v8/);
+  assert.match(serviceWorker, /capygotchi-v9/);
   assert.match(serviceWorker, /dialogues\.js/);
   assert.match(serviceWorker, /pet-library\.js/);
   assert.match(serviceWorker, /quest-core\.js/);
@@ -413,5 +508,6 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(serviceWorker, /travel-core\.js/);
   assert.match(serviceWorker, /inventory-core\.js/);
   assert.match(serviceWorker, /world-core\.js/);
+  assert.match(serviceWorker, /friendbook-core\.js/);
   assert.match(serviceWorker, /weather\.js/);
 });
