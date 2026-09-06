@@ -2,7 +2,7 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#fff8e9" />
     <meta name="description" content="Dein interaktives Pixel-Capybara mit echten Bedürfnissen für die Hosentasche." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -11,7 +11,7 @@
     <meta name="format-detection" content="telephone=no" />
     <title>Capygotchi</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=9" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <main class="app-shell" id="app">
@@ -182,28 +182,49 @@
       <button class="primary-button" id="away-close" type="button">JETZT KÜMMERN</button>
     </dialog>
 
-    <dialog class="sheet travel-sheet" id="travel-dialog">
+    <dialog class="sheet travel-sheet" id="travel-dialog" aria-labelledby="travel-dialog-title">
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-title"><div><p class="sheet-kicker" id="travel-dialog-kind">REISEPOST</p><h2 id="travel-dialog-title">Glitzerfjord</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
+      <section class="travel-recall" aria-labelledby="travel-recall-heading">
+        <div><small>VERMISST DU DEIN CAPY?</small><strong id="travel-recall-heading">Früher heimholen</strong><p id="travel-recall-copy">Du kannst dein Capy sofort heimholen. Dann sinken Spaß und Neugier; Reisefund und neue Bekanntschaft bleiben unterwegs.</p></div>
+        <button class="travel-recall-request" id="request-travel-recall" type="button" aria-expanded="false" aria-controls="travel-recall-confirm">CAPY FRÜHER ZURÜCKHOLEN</button>
+        <div class="travel-recall-confirm" id="travel-recall-confirm" role="group" aria-labelledby="travel-recall-confirm-title" aria-describedby="travel-recall-consequences" hidden>
+          <strong id="travel-recall-confirm-title">Reise wirklich beenden?</strong>
+          <p id="travel-recall-consequences">Die Reise endet sofort: Spaß −12 · Neugier −10 · Nähe +4 · Energie +3. Reisefund und neue Bekanntschaft bleiben unterwegs.</p>
+          <button id="cancel-travel-recall" type="button">WEITERREISEN LASSEN</button>
+          <button id="confirm-travel-recall" type="button" aria-describedby="travel-recall-consequences">JA, CAPY HEIMHOLEN</button>
+        </div>
+      </section>
       <div class="travel-illustration" id="travel-illustration" data-palette="glitter" aria-hidden="true"><span class="travel-capy-dot">●</span><i></i><i></i><i></i><i></i></div>
       <div class="travel-location"><span id="travel-dialog-icon">✦</span><div><small>GERADE IN</small><strong id="travel-dialog-place">Funkelholm</strong></div></div>
       <p id="travel-dialog-doing"></p>
       <div class="travel-fact"><strong>WUSSTEST DU?</strong><span id="travel-dialog-fact"></span></div>
-      <div class="travel-progress" aria-label="Fortschritt der Reise"><span id="travel-progress-fill"></span></div>
+      <div class="travel-progress" id="travel-progress" role="progressbar" aria-label="Fortschritt der Reise" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="travel-progress-fill"></span></div>
       <div class="travel-return"><strong id="travel-dialog-countdown">NOCH 2 STD.</strong><small>Dann kommt dein Capy von allein zurück.</small></div>
-      <div class="travel-companion" id="travel-companion" hidden><span id="travel-companion-icon">♢</span><p><small>REISEBEGLEITUNG</small><strong id="travel-companion-name">Hase Fips</strong></p></div>
+      <div class="travel-companion" id="travel-companion" hidden><span id="travel-companion-icon">♢</span><p><small>REISEBEGLEITUNG</small><strong id="travel-companion-name">Hase Fips</strong><em id="travel-companion-effect">Vertraute Gesellschaft für unterwegs</em></p></div>
       <div class="travel-treasure"><span>?</span><p><small>IM REISEGEPÄCK</small><strong id="travel-reward-label">Ein noch unbekannter Fund</strong></p></div>
       <p class="travel-history" id="travel-history"></p>
     </dialog>
 
-    <dialog class="sheet journey-sheet" id="journey-dialog">
+    <dialog class="sheet journey-sheet" id="journey-dialog" aria-labelledby="journey-title">
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-title"><div><p class="sheet-kicker">ÜBERRASCHUNGSREISE</p><h2 id="journey-title">Rucksack packen?</h2></div><button type="button" data-close aria-label="Schließen">×</button></div>
-      <div class="journey-hero" aria-hidden="true"><span>⌁</span><i>?</i><b>▣</b></div>
-      <p><strong id="journey-capy-name">Emmi</strong> wählt das Ziel ganz allein. Die Reise dauert zwei bis drei Stunden. Vielleicht kommt dein Capy mit einem neuen Fund zurück – oder lernt unterwegs einen Freund kennen.</p>
-      <div class="journey-rules"><span>?</span><strong>ZIEL BLEIBT EINE ÜBERRASCHUNG</strong><span>2–3 H</span></div>
-      <button class="primary-button" id="start-journey-button" type="button">JETZT AUF REISE SCHICKEN</button>
-      <button class="secondary-button" type="button" data-close>DOCH NOCH ZU HAUSE BLEIBEN</button>
+      <div class="journey-scroll">
+        <div class="journey-hero" aria-hidden="true"><span>⌁</span><i>?</i><b>▣</b></div>
+        <p><strong id="journey-capy-name">Emmi</strong> wählt das Ziel selbst und verrät es vorher nicht. Die Reise dauert zwei bis drei Stunden. Vielleicht kommt dein Capy mit einem neuen Fund zurück – oder lernt unterwegs einen Freund kennen.</p>
+        <div class="journey-rules"><span>?</span><strong>ZIEL BLEIBT EINE ÜBERRASCHUNG</strong><span>2–3 H</span></div>
+        <fieldset class="journey-friends">
+          <legend>WER KOMMT MIT?</legend>
+          <p>Wähle allein oder nimm einen bereits kennengelernten Freund mit. Jeder Freund wirkt mit seinem eigenen Charakter auf die Bedürfnisse.</p>
+          <div class="journey-friend-options" id="journey-friend-options"></div>
+          <p class="journey-friends-empty" id="journey-friends-empty">Noch wartet nur die Alleinreise. Neue Reisebekanntschaften landen automatisch im Freundebuch.</p>
+          <p class="journey-selection-summary" id="journey-selection-summary" aria-live="polite"></p>
+        </fieldset>
+      </div>
+      <div class="journey-actions">
+        <button class="primary-button" id="start-journey-button" type="button">ALLEIN AUF REISE</button>
+        <button class="secondary-button" type="button" data-close>DOCH NOCH ZU HAUSE BLEIBEN</button>
+      </div>
     </dialog>
 
     <dialog class="sheet inventory-sheet" id="inventory-dialog">
@@ -308,6 +329,6 @@
       </form>
     </dialog>
 
-    <script type="module" src="./app.js?v=9"></script>
+    <script type="module" src="./app.js?v=10"></script>
   </body>
 </html>

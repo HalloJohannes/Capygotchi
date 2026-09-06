@@ -1,6 +1,6 @@
-import { createFriendBook, normalizeFriendBook } from "./friendbook-core.js?v=9";
-import { createInventory, normalizeInventory } from "./inventory-core.js?v=9";
-import { createGarden, createWorld, normalizeGarden, normalizeWorld } from "./world-core.js?v=9";
+import { createFriendBook, normalizeFriendBook } from "./friendbook-core.js?v=10";
+import { createInventory, normalizeInventory } from "./inventory-core.js?v=10";
+import { createGarden, createWorld, normalizeGarden, normalizeWorld } from "./world-core.js?v=10";
 
 export const STORAGE_KEY = "capygotchi-state-v1";
 export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cream"]);
@@ -8,7 +8,7 @@ export const FUR_VARIANTS = Object.freeze(["classic", "golden", "chocolate", "cr
 export const NEED_KEYS = Object.freeze(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
 
 export const DEFAULT_STATE = Object.freeze({
-  version: 7,
+  version: 8,
   name: "Emmi",
   furVariant: "classic",
   adoptedAt: 0,
@@ -110,7 +110,7 @@ export function normalizeState(candidate, now = Date.now()) {
   return {
     ...base,
     ...candidate,
-    version: 7,
+    version: 8,
     name: cleanName(candidate.name),
     furVariant: FUR_VARIANTS.includes(candidate.furVariant) ? candidate.furVariant : "classic",
     adoptedAt: Number.isFinite(candidate.adoptedAt) && candidate.adoptedAt > 0 ? candidate.adoptedAt : now,

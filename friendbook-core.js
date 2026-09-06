@@ -10,6 +10,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Hafengeschichten", "Butterkekskrümel"],
     quote: "Gute Freunde finden auch bei Nebel nach Hause.",
     description: "Kennt jede Brücke beim Namen und teilt den besten Aussichtspunkt über den Fleeten.",
+    travelInfluence: {
+      label: "Hafenkompass",
+      description: "Käpt’n Keks findet sichere Abkürzungen und erzählt dabei die besten Hafengeschichten.",
+      changes: { curiosity: 6, social: 3, energy: -2 },
+    },
   },
   {
     id: "fiete",
@@ -22,6 +27,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["glatte Kiesel", "Wasserwettrennen"],
     quote: "Ein kleiner Umweg am Wasser ist meistens der schönste Weg.",
     description: "Kann unter jeder Brücke hindurchtauchen und baut aus Fundstücken winzige Boote.",
+    travelInfluence: {
+      label: "Fleet-Flitzer",
+      description: "Fiete macht jeden Wasserweg zum ausgelassenen Entdeckerabenteuer.",
+      changes: { fun: 7, curiosity: 3, clean: -3 },
+    },
   },
   {
     id: "alma",
@@ -34,6 +44,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["alte Landkarten", "Caféterrassen"],
     quote: "In jedem alten Ding steckt eine neue Geschichte.",
     description: "Flattert von Ausstellung zu Ausstellung und merkt sich jedes spannende Detail.",
+    travelInfluence: {
+      label: "Museumsfunke",
+      description: "Alma entdeckt überall eine Geschichte und kommt mit jedem Tier ins Gespräch.",
+      changes: { curiosity: 7, social: 3, energy: -2 },
+    },
   },
   {
     id: "minna",
@@ -46,6 +61,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Miniaturkunst", "Käsekuchenpausen"],
     quote: "Man muss nicht groß sein, um große Kunst zu lieben.",
     description: "Entdeckt die kleinsten Verzierungen und kennt eine besonders gemütliche Leseecke.",
+    travelInfluence: {
+      label: "Stille Schatzsuche",
+      description: "Minna findet kleine Wunder und plant zwischendurch besonders kluge Ruhepausen.",
+      changes: { curiosity: 5, energy: 4, social: 1 },
+    },
   },
   {
     id: "frieda",
@@ -58,6 +78,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["violette Blüten", "lange Spaziergänge"],
     quote: "Langsam gehen heißt: mehr Schönes sehen.",
     description: "Zeigt neuen Freunden die leisesten Sandwege und hört ausgesprochen gut zu.",
+    travelInfluence: {
+      label: "Heideruhe",
+      description: "Frieda sorgt für langsame Wege, gute Gespräche und eine Extraportion Erholung.",
+      changes: { energy: 6, social: 4, fun: 1 },
+    },
   },
   {
     id: "junis",
@@ -70,6 +95,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Sonnenuntergänge", "Spurenrätsel"],
     quote: "Das beste Abenteuer beginnt oft hinter dem nächsten Hügel.",
     description: "Erfindet freundliche Schnitzeljagden, bei denen niemand zurückgelassen wird.",
+    travelInfluence: {
+      label: "Spurenrätsel",
+      description: "Junis verwandelt Umwege in aufregende Rätsel – das kostet ein wenig Puste.",
+      changes: { curiosity: 6, fun: 5, energy: -3 },
+    },
   },
   {
     id: "ludwig",
@@ -82,6 +112,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Schlossgeschichten", "Bergpicknicks"],
     quote: "Für Freunde ist in der kleinsten Berghütte Platz.",
     description: "Plant fantastische Burgen und besitzt eine erstaunlich königliche Picknickdecke.",
+    travelInfluence: {
+      label: "Königspicknick",
+      description: "Ludwig packt gemütliche Pausen und für alle einen Platz auf der Decke ein.",
+      changes: { energy: 7, social: 3, fun: 1 },
+    },
   },
   {
     id: "tilda",
@@ -94,6 +129,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["glitzernde Kronen", "Aufwinde"],
     quote: "Von oben sieht selbst ein Problem ein bisschen kleiner aus.",
     description: "Fliegt die schönsten Panoramarunden und bringt verlorene Dinge zuverlässig zurück.",
+    travelInfluence: {
+      label: "Panoramamut",
+      description: "Tilda zeigt neue Aussichten und macht mutig für steile, anstrengende Wege.",
+      changes: { curiosity: 7, fun: 4, energy: -3 },
+    },
   },
   {
     id: "knack",
@@ -106,6 +146,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Gewürzgurken", "Regentrommeln"],
     quote: "Ein herzhaftes Knack macht jeden Tag besser.",
     description: "Findet jeden versteckten Gurkenpfad – und erkennt Zwiebeln schon von weitem.",
+    travelInfluence: {
+      label: "Gurkenproviant",
+      description: "Knack bringt knusprigen Proviant mit und macht selbst lange Wege herrlich albern.",
+      changes: { fun: 7, satiety: 4, clean: -2 },
+    },
   },
   {
     id: "dillie",
@@ -118,6 +163,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Tautropfen", "langsame Brettspiele"],
     quote: "Freundschaft darf sich ruhig Zeit nehmen.",
     description: "Schmückt ihr Häuschen mit Glitzerpunkten und gewinnt jedes Geduldsspiel.",
+    travelInfluence: {
+      label: "Sorgfaltspause",
+      description: "Dillie achtet auf saubere Pfoten, ruhige Pausen und freundliche Gesellschaft.",
+      changes: { clean: 6, social: 4, energy: 1 },
+    },
   },
   {
     id: "lumi",
@@ -130,6 +180,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Funkelsteine", "warmer Kakao"],
     quote: "Ein Licht wird heller, wenn man es miteinander teilt.",
     description: "Sammelt Lichtreflexe in kleinen Gläsern und verschenkt die schönsten an Freunde.",
+    travelInfluence: {
+      label: "Geteiltes Licht",
+      description: "Lumi teilt jedes Funkeln und lässt stille Augenblicke besonders nah wirken.",
+      changes: { social: 6, curiosity: 3, energy: 1 },
+    },
   },
   {
     id: "fuenkchen",
@@ -142,6 +197,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Wellenrutschen", "leuchtende Postkarten"],
     quote: "Ein bisschen Quatsch hält die Freundschaft warm.",
     description: "Rutscht schneller als der Wind und kann sogar ernste Capys zum Kichern bringen.",
+    travelInfluence: {
+      label: "Wellenquatsch",
+      description: "Fünkchen sorgt für Lachanfälle, Freundschaft und ziemlich nasse Rutschpartien.",
+      changes: { fun: 8, social: 3, clean: -3 },
+    },
   },
   {
     id: "poeppel",
@@ -154,6 +214,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Brettspiele", "knappe Endrunden"],
     quote: "Gewinnen ist schön – zusammen spielen ist schöner.",
     description: "Erklärt Regeln geduldig und gratuliert bei jeder Niederlage von ganzem Herzen.",
+    travelInfluence: {
+      label: "Faire Endrunde",
+      description: "Pöppel hat immer ein Brettspiel dabei und macht aus jeder Pause eine knappe Partie.",
+      changes: { fun: 7, curiosity: 5, energy: -2 },
+    },
   },
   {
     id: "karo",
@@ -166,6 +231,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Würfelsammlungen", "Sandburgenpläne"],
     quote: "Seitwärts kommt man manchmal auf die besten Ideen.",
     description: "Erfindet ständig neue Spielregeln und baut für alle einen Platz am Spieltisch.",
+    travelInfluence: {
+      label: "Seitwärts-Idee",
+      description: "Karo denkt um die Ecke und erfindet auf jedem Weg ein neues gemeinsames Spiel.",
+      changes: { curiosity: 5, fun: 4, social: 2 },
+    },
   },
   {
     id: "mokka",
@@ -178,6 +248,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Milchschaumkunst", "lange Gespräche"],
     quote: "Ein guter Kaffee beginnt mit einem Platz für dich.",
     description: "Zaubert Capygesichter in Milchschaum und weiß immer, wer gerade eine Pause braucht.",
+    travelInfluence: {
+      label: "Wolkenpause",
+      description: "Mokka findet die gemütlichsten Cafés und hört bei einer sicheren Schaumkrone zu.",
+      changes: { energy: 5, social: 4, curiosity: 2 },
+    },
   },
   {
     id: "crema",
@@ -190,6 +265,11 @@ export const FRIEND_PROFILES = Object.freeze([
     likes: ["Kaffeeduft", "Regennachmittage"],
     quote: "Die gemütlichste Pause ist die, die man teilt.",
     description: "Kennt jede Sofaecke und wacht für gute Freunde sogar vor dem Mittagsschlaf auf.",
+    travelInfluence: {
+      label: "Kuschelkraft",
+      description: "Crema kennt jede gute Sofaecke; nach so viel Gemütlichkeit locken Umwege etwas weniger.",
+      changes: { energy: 8, social: 4, curiosity: -1 },
+    },
   },
 ]);
 
@@ -201,6 +281,24 @@ function seedNumber(value) {
 
 export function friendForId(id) {
   return FRIEND_BY_ID[id] || null;
+}
+
+export function knownTravelFriend(candidate, id) {
+  const friend = friendForId(id);
+  if (!friend) return null;
+  const friendBook = normalizeFriendBook(candidate);
+  return friendBook.friends.some((entry) => entry.id === friend.id) ? friend : null;
+}
+
+export function friendTravelChanges(id, scale = 1) {
+  const friend = friendForId(id);
+  if (!friend?.travelInfluence?.changes) return {};
+  const normalizedScale = Math.max(0, Math.min(1, Number(scale) || 0));
+  return Object.fromEntries(
+    Object.entries(friend.travelInfluence.changes)
+      .map(([key, value]) => [key, Math.round(value * normalizedScale)])
+      .filter(([, value]) => value !== 0),
+  );
 }
 
 export function createFriendBook() {
@@ -232,9 +330,10 @@ export function normalizeFriendBook(candidate) {
   };
 }
 
-export function travelFriendFor(destinationId, candidate, seed = "capy") {
+export function travelFriendFor(destinationId, candidate, seed = "capy", excludedIds = []) {
   const friendBook = normalizeFriendBook(candidate);
-  const destinationFriends = FRIEND_PROFILES.filter((friend) => friend.destinationId === destinationId);
+  const excluded = new Set(Array.isArray(excludedIds) ? excludedIds : []);
+  const destinationFriends = FRIEND_PROFILES.filter((friend) => friend.destinationId === destinationId && !excluded.has(friend.id));
   if (!destinationFriends.length) return null;
   const knownIds = new Set(friendBook.friends.map((friend) => friend.id));
   const unseen = destinationFriends.filter((friend) => !knownIds.has(friend.id));
