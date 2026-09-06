@@ -20,6 +20,9 @@ Eine installierbare, interaktive Pixel-Capybara-Bibliothek für iPhone und Brows
 - Das Capy entscheidet selbst, ob es sich gerade an der Hütte, auf der Wildwiese, im Garten oder im Wintergarten aufhält
 - Selbstständige zwei- bis dreistündige Solo-Reisen zu echten und fantastischen Orten – inklusive anklickbarer Reisepostkarte, Ortswissen und Mitbringsel
 - Überraschungsreisen auf Wunsch: Du packst den Rucksack, das Capy sucht das Ziel selbst aus und kommt eigenständig zurück
+- Bereits kennengelernte Tiere aus dem persönlichen Freundebuch können als Reisebegleitung ausgewählt werden
+- Alle 16 Reisefreunde besitzen einen eigenen Charaktereffekt auf Sättigung, Spaß, Sauberkeit, Energie, Nähe oder Neugier
+- Laufende Reisen lassen sich vorzeitig beenden; der Rückruf kostet transparent Spaß und Neugier und lässt Fund sowie neue Bekanntschaft unterwegs
 - Eine Sammlung mit 22 Reisefunden: exklusive Kleidungsplätze für Mütze, Brille, Schal, Oberteil und Pfoten sowie platzierbare Gegenstände für die Spielwelt
 - Milchaufschäumer, Gießkanne, Brettspiel, Picknickdecke, Radio und weitere Fundstücke werden in ihrem passenden Landschaftsbereich sichtbar
 - Vier Gemüsebeete mit Karotten, Tomaten, Gurken und Minikürbissen; Pflanzen wachsen auch bei geschlossener App weiter und die Ernte kann direkt verfüttert werden
