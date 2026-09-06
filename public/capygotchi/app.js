@@ -17,16 +17,18 @@ import {
   moodFor,
   sortFoodEntriesBySatiety,
   statusPhrase,
-} from "./game-core.js?v=9";
-import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=9";
-import { dialogueFor } from "./dialogues.js?v=9";
+} from "./game-core.js?v=10";
+import { CAPY_HEIGHT, CAPY_PIXELS, CAPY_WIDTH } from "./pet-art.js?v=10";
+import { dialogueFor } from "./dialogues.js?v=10";
 import {
   friendBookCompletion,
   friendForId,
+  friendTravelChanges,
+  knownTravelFriend,
   markFriendBookSeen,
   meetTravelFriend,
   travelFriendFor,
-} from "./friendbook-core.js?v=9";
+} from "./friendbook-core.js?v=10";
 import {
   LIBRARY_KEY,
   activeProfile,
@@ -36,7 +38,7 @@ import {
   removeProfile,
   selectProfile,
   updateProfile,
-} from "./pet-library.js?v=9";
+} from "./pet-library.js?v=10";
 import {
   QUEST_DEFINITIONS,
   activateQuest,
@@ -47,17 +49,19 @@ import {
   questTimeLabel,
   recordQuestAction,
   taskQuestComplete,
-} from "./quest-core.js?v=9";
-import { startQuestGame } from "./quest-games.js?v=9";
+} from "./quest-core.js?v=10";
+import { startQuestGame } from "./quest-games.js?v=10";
 import {
   departNow,
   destinationById,
   isTraveling,
   normalizeTravel,
+  recallCompanionScale,
+  recallTravel,
   travelProgress,
   travelTimeLabel,
-} from "./travel-core.js?v=9";
-import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=9";
+} from "./travel-core.js?v=10";
+import { fallbackGermanyWeather, loadGermanyWeather } from "./weather.js?v=10";
 import {
   EQUIPMENT_SLOTS,
   ITEM_DEFINITIONS,
@@ -67,7 +71,7 @@ import {
   rewardForDestination,
   toggleEquipment,
   togglePlacedItem,
-} from "./inventory-core.js?v=9";
+} from "./inventory-core.js?v=10";
 import {
   ANIMAL_FRIENDS,
   CROPS,
@@ -82,7 +86,7 @@ import {
   selectCrop,
   travelCompanion,
   waterCrop,
-} from "./world-core.js?v=9";
+} from "./world-core.js?v=10";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -191,6 +195,8 @@ let lastQuestNotice = "";
 let weatherData = fallbackGermanyWeather();
 let weatherLoading = false;
 let inventoryFilter = "all";
+let selectedJourneyFriendId = null;
+let travelReturnHandledAt = 0;
 
 const NAME_SUGGESTIONS = ["Emmi", "Flocke", "Lotti", "Pino", "Nala", "Keks", "Maja", "Oskar"];
 
@@ -232,6 +238,47 @@ function worldSeed() {
   return `${activePetId || "new"}:${state.name}:world`;
 }
 
+function mergeChanges(...sets) {
+  const merged = {};
+  for (const changes of sets) {
+    for (const [key, value] of Object.entries(changes || {})) {
+      if (Number.isFinite(value)) merged[key] = (merged[key] || 0) + value;
+    }
+  }
+  return merged;
+}
+
+function formatNeedChanges(changes) {
+  return Object.entries(changes || {})
+    .filter(([key, value]) => NEED_LABELS[key] && Number.isFinite(value) && value !== 0)
+    .map(([key, value]) => `${NEED_LABELS[key]} ${value > 0 ? "+" : "−"}${Math.abs(value)}`)
+    .join(" · ");
+}
+
+function travelCompanionDetails(travel = state.travel, completed = false) {
+  const bookId = completed ? travel?.lastBookCompanionId : travel?.bookCompanionId;
+  const bookFriend = knownTravelFriend(state.friendBook, bookId);
+  if (bookFriend) {
+    return {
+      icon: bookFriend.icon,
+      name: bookFriend.name,
+      effect: `${bookFriend.travelInfluence.label} · ${formatNeedChanges(bookFriend.travelInfluence.changes)}`,
+      bookFriend,
+    };
+  }
+  const animalId = completed ? travel?.lastCompanionId : travel?.companionId;
+  const animal = ANIMAL_FRIENDS[animalId];
+  return animal ? { icon: animal.icon, name: animal.label, effect: "Vertraute Gesellschaft für unterwegs", bookFriend: null } : null;
+}
+
+function recallChangesPreview(travel = state.travel, now = Date.now()) {
+  const companion = travelCompanionDetails(travel)?.bookFriend;
+  return mergeChanges(
+    { fun: -12, curiosity: -10, social: 4, energy: 3 },
+    friendTravelChanges(companion?.id, recallCompanionScale(travelProgress(travel, now) / 100)),
+  );
+}
+
 function prepareTravelCargo() {
   if (!isTraveling(state.travel)) return;
   state.inventory = normalizeInventory(state.inventory);
@@ -239,7 +286,8 @@ function prepareTravelCargo() {
   if (!state.travel.rewardId) {
     state.travel.rewardId = rewardForDestination(state.inventory, state.travel.destinationId, `${travelSeed()}:${state.travel.departedAt}`);
   }
-  if (state.travel.companionId === null || state.travel.companionId === undefined) {
+  if ((state.travel.companionId === null || state.travel.companionId === undefined)
+      && state.travel.initiatedBy !== "player" && !state.travel.bookCompanionId) {
     state.travel.companionId = travelCompanion(state.world, `${travelSeed()}:${state.travel.destinationId}:${state.travel.departedAt}`);
   }
   if (state.travel.meetingFriendId === null || state.travel.meetingFriendId === undefined) {
@@ -247,6 +295,7 @@ function prepareTravelCargo() {
       state.travel.destinationId,
       state.friendBook,
       `${travelSeed()}:${state.travel.destinationId}:${state.travel.departedAt}:friend`,
+      state.travel.bookCompanionId ? [state.travel.bookCompanionId] : [],
     );
     state.travel.meetingFriendId = meetingFriend?.id || null;
   }
@@ -263,6 +312,28 @@ function syncTravelState(now = Date.now()) {
   if (traveling) prepareTravelCargo();
   if (state.travel?.returnPending && !traveling) {
     const destination = destinationById(state.travel.lastDestinationId);
+    const travelCompanionInfo = travelCompanionDetails(state.travel, true);
+    const bookCompanion = travelCompanionInfo?.bookFriend || null;
+    if (state.travel.lastReturnReason === "recalled") {
+      const companionChanges = friendTravelChanges(
+        bookCompanion?.id,
+        recallCompanionScale(state.travel.lastTravelProgress),
+      );
+      const recallChanges = mergeChanges(
+        { fun: -12, curiosity: -10, social: 4, energy: 3 },
+        companionChanges,
+      );
+      state.travel = { ...state.travel, returnPending: false };
+      state = applyChanges(state, recallChanges, now);
+      travelReturnHandledAt = now;
+      const companionText = bookCompanion
+        ? ` ${bookCompanion.name} hat den Rückweg begleitet und mit „${bookCompanion.travelInfluence.label}“ ein wenig aufgefangen.`
+        : "";
+      remember(`${state.name} kam vorzeitig aus ${destination?.title || "der Ferne"} zurück. Spaß und Neugier haben darunter gelitten.${companionText}`, "⌂");
+      currentPhrase = `Da bin ich schon wieder. Ich wäre gern noch etwas geblieben, aber ich freue mich auch, dich zu sehen.${bookCompanion ? ` ${bookCompanion.name} hat mich sicher heimgebracht.` : ""}`;
+      showToast(`${state.name.toUpperCase()} IST WIEDER ZU HAUSE · ${formatNeedChanges(recallChanges).toUpperCase()}`, 5200);
+      return false;
+    }
     const rewardId = state.travel.lastRewardId || rewardForDestination(state.inventory, state.travel.lastDestinationId, `${travelSeed()}:return:${state.travel.completedTrips}`);
     const reward = rewardId ? ITEM_DEFINITIONS[rewardId] : null;
     const companion = ANIMAL_FRIENDS[state.travel.lastCompanionId];
@@ -271,6 +342,7 @@ function syncTravelState(now = Date.now()) {
         state.travel.lastDestinationId,
         state.friendBook,
         `${travelSeed()}:${state.travel.lastReturnAt}:${state.travel.completedTrips}:friend`,
+        bookCompanion ? [bookCompanion.id] : [],
       );
     const tripKey = `${state.travel.lastReturnAt}:${state.travel.lastDestinationId}:${state.travel.completedTrips}`;
     const meeting = meetTravelFriend(
@@ -288,25 +360,31 @@ function syncTravelState(now = Date.now()) {
       state.garden.seeds = Object.fromEntries(Object.entries(state.garden.seeds).map(([key, amount]) => [key, amount + 1]));
     }
     state.travel = { ...state.travel, returnPending: false, lastRewardId: rewardId, lastMeetingFriendId: meeting.friend?.id || null };
-    state = applyChanges(state, { curiosity: 9, fun: 5, social: meeting.friend ? 7 : companion ? 4 : -2, energy: -4, xp: 12 });
+    state = applyChanges(state, mergeChanges(
+      { curiosity: 9, fun: 5, social: meeting.friend ? 7 : (bookCompanion || companion ? 4 : -2), energy: -4, xp: 12 },
+      friendTravelChanges(bookCompanion?.id),
+    ), now);
+    travelReturnHandledAt = now;
     const findText = reward ? `${reward.label} für unsere Sammlung` : "ein buntes Samentütchen für den Garten";
-    const companionText = companion ? ` Zusammen mit ${companion.label}.` : "";
+    const companionText = travelCompanionInfo ? ` Zusammen mit ${travelCompanionInfo.name}.` : "";
     const meetingText = meeting.friend
       ? ` Dort habe ich ${meeting.friend.name} ${meeting.firstMeeting ? "kennengelernt" : "wiedergesehen"}!`
       : "";
     remember(`${state.name} ist aus ${destination?.title || "einem Abenteuer"} zurück, brachte ${findText} mit.${companionText}${meeting.friend ? ` ${meeting.friend.name} steht jetzt im Freundebuch.` : ""}`, meeting.friend?.icon || reward?.icon || "⌁");
-    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe ${findText} mitgebracht.${companion ? ` ${companion.label} war dabei!` : ""}${meetingText}`;
+    const influenceText = bookCompanion ? ` ${bookCompanion.name}s ${bookCompanion.travelInfluence.label} hat mir richtig gutgetan.` : "";
+    currentPhrase = `Da bin ich wieder! Ich war in ${destination?.title || "der Ferne"} und habe ${findText} mitgebracht.${travelCompanionInfo ? ` ${travelCompanionInfo.name} war dabei!` : ""}${meetingText}${influenceText}`;
     showToast(meeting.friend
       ? `${state.name.toUpperCase()} IST ZURÜCK · ${meeting.firstMeeting ? "NEUER FREUND" : "WIEDERSEHEN"}: ${meeting.friend.name.toUpperCase()}!`
       : `${state.name.toUpperCase()} IST ZURÜCK · ${reward?.label?.toUpperCase() || "NEUE SAMEN"}!`, 5600);
   } else if (traveling) {
     const destination = destinationById(state.travel.destinationId);
-    const companion = ANIMAL_FRIENDS[state.travel.companionId];
-    currentPhrase = `Reisepost von ${state.name}: Ich bin gerade in ${destination.title}${companion ? ` – ${companion.label} ist mitgekommen` : ""} und komme von allein wieder zurück.`;
+    const companion = travelCompanionDetails();
+    currentPhrase = `Reisepost von ${state.name}: Ich bin gerade in ${destination.title}.${companion ? ` ${companion.name} ist mitgekommen.` : ""} Ich komme von allein wieder zurück – du kannst mich aber auch früher heimrufen.`;
   }
   if (previousStatus !== state.travel?.status && state.travel?.status === "away") {
     const destination = destinationById(state.travel.destinationId);
-    showToast(`${state.name} ist allein nach ${destination.title} gereist.`, 4200);
+    const companion = travelCompanionDetails();
+    showToast(`${state.name} ist ${companion ? `mit ${companion.name}` : "allein"} nach ${destination.title} gereist.`, 4200);
   }
   return traveling;
 }
@@ -318,7 +396,7 @@ function syncWorldState(now = Date.now(), traveling = isTraveling(state.travel, 
   state.inventory = normalizeInventory(state.inventory);
   if (state.sleeping) state.world = { ...state.world, area: "home" };
   state.landscapeArea = state.world.area;
-  if (!traveling && previousArea !== state.world.area && !interactionBusy && !document.querySelector("dialog[open]")) {
+  if (!traveling && previousArea !== state.world.area && travelReturnHandledAt !== now && !interactionBusy && !document.querySelector("dialog[open]")) {
     const area = WORLD_AREAS[state.world.area];
     currentPhrase = `Ich bin von allein weitergezogen. Jetzt bin ich bei ${area.label.toLowerCase()}.`;
     showToast(`${state.name} ist jetzt bei ${area.short}.`, 2800);
@@ -385,9 +463,12 @@ function renderLandscape(now = Date.now(), traveling = isTraveling(state.travel,
   $('.cabin[data-landmark="cabin"]').setAttribute("aria-label", `${state.name}s kleine Schlafhütte ansehen`);
   elements.petButton.style.setProperty("--pet-x", `${wanderPosition(now)}%`);
   $("#growth-label").textContent = `${growth.label} · WÄCHST MIT DIR`;
-  $("#area-name").textContent = traveling ? "CAPY AUF SOLO-REISE" : WORLD_AREAS[state.landscapeArea].label;
+  const companion = traveling ? travelCompanionDetails() : null;
+  $("#area-name").textContent = traveling ? (companion ? "CAPY-REISE MIT FREUND" : "CAPY AUF SOLO-REISE") : WORLD_AREAS[state.landscapeArea].label;
   const moveMinutes = Math.max(1, Math.ceil((state.world.nextMoveAt - now) / 60_000));
-  $("#area-choice").textContent = traveling ? "ZIEL SELBST GEWÄHLT" : `CAPY WÄHLT SELBST · WEITER IN ~${moveMinutes} MIN`;
+  $("#area-choice").textContent = traveling
+    ? `${companion ? `${companion.name.toUpperCase()} DABEI · ` : ""}ZIEL SELBST GEWÄHLT`
+    : `CAPY WÄHLT SELBST · WEITER IN ~${moveMinutes} MIN`;
   $$("[data-area]", $("#world-navigation")).forEach((item) => item.classList.toggle("is-active", item.dataset.area === state.landscapeArea));
   renderOutfit();
   renderPlacedItems(traveling);
@@ -403,8 +484,11 @@ function renderLandscape(now = Date.now(), traveling = isTraveling(state.travel,
   $("#travel-place").textContent = destination.title;
   $("#travel-countdown").textContent = travelTimeLabel(state.travel, now);
   if (elements.travelDialog.open) {
+    const progress = travelProgress(state.travel, now);
     $("#travel-dialog-countdown").textContent = travelTimeLabel(state.travel, now);
-    $("#travel-progress-fill").style.setProperty("--value", `${travelProgress(state.travel, now)}%`);
+    $("#travel-progress-fill").style.setProperty("--value", `${progress}%`);
+    $("#travel-progress").setAttribute("aria-valuenow", String(Math.round(progress)));
+    $("#travel-recall-consequences").textContent = `Die Reise endet sofort: ${formatNeedChanges(recallChangesPreview(state.travel, now))}. Reisefund und neue Bekanntschaft bleiben unterwegs.`;
   }
 }
 
@@ -443,23 +527,102 @@ function openTravelDetails() {
   $("#travel-dialog-doing").textContent = `${state.name} ${destination.doing}.`;
   $("#travel-dialog-fact").textContent = destination.fact;
   $("#travel-dialog-countdown").textContent = travelTimeLabel(state.travel);
-  $("#travel-progress-fill").style.setProperty("--value", `${travelProgress(state.travel)}%`);
+  const progress = travelProgress(state.travel);
+  $("#travel-progress-fill").style.setProperty("--value", `${progress}%`);
+  $("#travel-progress").setAttribute("aria-valuenow", String(Math.round(progress)));
   $("#travel-illustration").dataset.palette = destination.palette;
-  const companion = ANIMAL_FRIENDS[state.travel.companionId];
+  const companion = travelCompanionDetails();
   $("#travel-companion").hidden = !companion;
   if (companion) {
     $("#travel-companion-icon").textContent = companion.icon;
-    $("#travel-companion-name").textContent = companion.label;
+    $("#travel-companion-name").textContent = companion.name;
+    $("#travel-companion-effect").textContent = companion.effect;
   }
   $("#travel-reward-label").textContent = state.travel.rewardId ? "Ein geheimnisvoller neuer Fund" : "Eine Überraschung aus der Ferne";
-  $("#travel-history").textContent = `${state.name} hat bereits ${state.travel.completedTrips} ${state.travel.completedTrips === 1 ? "Solo-Reise" : "Solo-Reisen"} beendet und ${state.travel.visitedIds.length} verschiedene Orte entdeckt.`;
+  $("#travel-history").textContent = `${state.name} hat bereits ${state.travel.completedTrips} ${state.travel.completedTrips === 1 ? "Reise" : "Reisen"} beendet und ${state.travel.visitedIds.length} verschiedene Orte entdeckt.`;
+  const recallPreview = recallChangesPreview(state.travel);
+  $("#travel-recall-copy").textContent = `Du kannst ${state.name} sofort heimholen. Dann sinken Spaß und Neugier; Reisefund und neue Bekanntschaft bleiben unterwegs.`;
+  $("#travel-recall-consequences").textContent = `Die Reise endet sofort: ${formatNeedChanges(recallPreview)}. Reisefund und neue Bekanntschaft bleiben unterwegs.`;
+  $("#request-travel-recall").textContent = `${state.name.toUpperCase()} FRÜHER ZURÜCKHOLEN`;
+  $("#confirm-travel-recall").textContent = `JA, ${state.name.toUpperCase()} HEIMHOLEN`;
+  $("#travel-recall-confirm").hidden = true;
+  $("#request-travel-recall").hidden = false;
+  $("#request-travel-recall").setAttribute("aria-expanded", "false");
   openDialog(elements.travelDialog);
+}
+
+function journeyOption(friend = null) {
+  const optionId = friend ? `journey-friend-${friend.id}` : "journey-friend-solo";
+  const label = document.createElement("label");
+  label.className = "journey-friend-option";
+  label.htmlFor = optionId;
+  const input = document.createElement("input");
+  input.type = "radio";
+  input.name = "journey-friend";
+  input.id = optionId;
+  input.value = friend?.id || "";
+  input.checked = (friend?.id || null) === selectedJourneyFriendId;
+  const icon = document.createElement("span");
+  icon.className = "journey-friend-icon";
+  icon.textContent = friend?.icon || "⌁";
+  icon.setAttribute("aria-hidden", "true");
+  const copy = document.createElement("span");
+  copy.className = "journey-friend-copy";
+  const species = document.createElement("small");
+  species.textContent = friend?.species || "FREIE SCHNUTE";
+  const name = document.createElement("strong");
+  name.textContent = friend?.name || "Allein losziehen";
+  const influence = document.createElement("em");
+  influence.id = `${optionId}-effect`;
+  influence.textContent = friend
+    ? `${friend.travelInfluence.label}: ${formatNeedChanges(friend.travelInfluence.changes)}`
+    : "Ohne Begleiterbonus – dafür ganz spontan";
+  copy.append(species, name, influence);
+  const selected = document.createElement("b");
+  selected.setAttribute("aria-hidden", "true");
+  selected.textContent = "✓";
+  label.append(input, icon, copy, selected);
+  return label;
+}
+
+function updateJourneySelection() {
+  const friend = knownTravelFriend(state.friendBook, selectedJourneyFriendId);
+  if (!friend) selectedJourneyFriendId = null;
+  $$("input[name='journey-friend']", $("#journey-friend-options")).forEach((input) => {
+    const selected = (input.value || null) === selectedJourneyFriendId;
+    input.checked = selected;
+    input.closest("label").classList.toggle("is-selected", selected);
+  });
+  $("#journey-selection-summary").textContent = friend
+    ? `${friend.name} kommt mit. ${friend.travelInfluence.description} Der volle Effekt wirkt bei der Heimkehr.`
+    : `${state.name} reist diesmal allein und entscheidet unterwegs ganz frei.`;
+  $("#start-journey-button").textContent = friend
+    ? `MIT ${friend.name.toUpperCase()} AUF REISE`
+    : "ALLEIN AUF REISE";
+}
+
+function renderJourneyFriends() {
+  selectedJourneyFriendId = null;
+  const options = $("#journey-friend-options");
+  options.replaceChildren(journeyOption());
+  for (const entry of state.friendBook?.friends || []) {
+    const friend = friendForId(entry.id);
+    if (friend) options.append(journeyOption(friend));
+  }
+  const hasFriends = Boolean(state.friendBook?.friends?.length);
+  $("#journey-friends-empty").hidden = hasFriends;
+  updateJourneySelection();
 }
 
 function openJourneyDialog() {
   if (!hasStoredState) return;
   if (isTraveling(state.travel)) {
     openTravelDetails();
+    return;
+  }
+  const cooldownMinutes = Math.max(0, Math.ceil(((state.travel?.manualTravelReadyAt || 0) - Date.now()) / 60_000));
+  if (cooldownMinutes > 0) {
+    showToast(`${state.name} erholt sich noch etwa ${cooldownMinutes} Min. vom frühen Heimweg.`);
     return;
   }
   if (state.sleeping) {
@@ -473,25 +636,67 @@ function openJourneyDialog() {
   closeTray();
   $("#journey-capy-name").textContent = state.name;
   $("#journey-title").textContent = `${state.name}, wohin geht es wohl?`;
+  renderJourneyFriends();
   openDialog(elements.journeyDialog);
 }
 
 function startManualJourney() {
   if (isTraveling(state.travel) || state.sleeping || interactionBusy) return;
   const now = Date.now();
-  state.travel = departNow(state.travel, state.adoptedAt, now, travelSeed());
+  const bookCompanion = knownTravelFriend(state.friendBook, selectedJourneyFriendId);
+  state.travel = departNow(state.travel, state.adoptedAt, now, travelSeed(), bookCompanion?.id || null);
+  if (!isTraveling(state.travel, now)) {
+    elements.journeyDialog.close();
+    render(now);
+    showToast(`${state.name} ist gerade erst von einer Reise zurück. Der nächste Rucksack kann kurz warten.`);
+    return;
+  }
   prepareTravelCargo();
   const destination = destinationById(state.travel.destinationId);
-  const companion = ANIMAL_FRIENDS[state.travel.companionId];
-  state = applyChanges(state, { curiosity: 5, fun: 3, energy: -2, social: companion ? 2 : -1, xp: 4 }, now);
-  remember(`${state.name} wurde von dir auf eine Überraschungsreise geschickt. Das Ziel: ${destination.title}.${companion ? ` ${companion.label} reist mit.` : ""}`, "⌁");
+  state = applyChanges(state, { curiosity: 5, fun: 3, energy: -2, social: bookCompanion ? 2 : -1 }, now);
+  remember(`${state.name} wurde von dir auf eine Überraschungsreise geschickt. Das Ziel: ${destination.title}.${bookCompanion ? ` ${bookCompanion.name} reist mit.` : " Diesmal geht es allein los."}`, "⌁");
   elements.journeyDialog.close();
-  talk(`Rucksack gepackt! Ich habe mein Ziel selbst gewählt: ${destination.title}.${companion ? ` ${companion.label} kommt mit!` : ""} Bis später!`);
+  talk(`Rucksack gepackt! Ich habe mein Ziel selbst gewählt: ${destination.title}.${bookCompanion ? ` ${bookCompanion.name} kommt mit und bringt ${bookCompanion.travelInfluence.label} mit!` : " Diesmal reise ich allein."} Bis später!`);
   playSound("happy");
   haptic([20, 35, 20, 35, 35]);
   showToast(`${state.name.toUpperCase()} IST AUF ÜBERRASCHUNGSREISE!`, 4200);
   render(now);
   window.setTimeout(openTravelDetails, 220);
+}
+
+function showTravelRecallConfirmation() {
+  if (!isTraveling(state.travel)) return;
+  $("#request-travel-recall").hidden = true;
+  $("#request-travel-recall").setAttribute("aria-expanded", "true");
+  $("#travel-recall-confirm").hidden = false;
+  $("#cancel-travel-recall").focus();
+}
+
+function hideTravelRecallConfirmation() {
+  $("#travel-recall-confirm").hidden = true;
+  $("#request-travel-recall").hidden = false;
+  $("#request-travel-recall").setAttribute("aria-expanded", "false");
+  $("#request-travel-recall").focus();
+}
+
+function recallCurrentJourney() {
+  if (state.travel?.status !== "away") return;
+  const now = Date.now();
+  const previousDeparture = state.travel.departedAt;
+  state.travel = recallTravel(state.travel, state.adoptedAt, now, travelSeed());
+  if (state.travel.lastReturnReason !== "recalled" || state.travel.lastReturnAt !== now || state.travel.departedAt === previousDeparture) {
+    render(now);
+    return;
+  }
+  saveState();
+  elements.travelDialog.close();
+  playSound("sad");
+  haptic([28, 55, 28]);
+  render(now);
+  window.setTimeout(() => {
+    const travelAction = $('button[data-action="travel"]', elements.actions);
+    travelAction?.focus();
+  }, 0);
 }
 
 function renderInventory(filter = inventoryFilter) {
@@ -583,7 +788,7 @@ function renderFriendBook() {
       <div class="friend-card-heading"><span>${friend.icon}</span><div><small>${friend.species}</small><strong>${friend.name}</strong><em>${destination?.title || friend.home}</em></div>${unseenIds.has(friend.id) ? "<b>NEU</b>" : ""}</div>
       <p>${friend.description}</p>
       <div class="friend-traits">${friend.traits.map((trait) => `<span>${trait}</span>`).join("")}</div>
-      <dl><div><dt>MAG BESONDERS</dt><dd>${friend.likes.join(" · ")}</dd></div><div><dt>WOHNT</dt><dd>${friend.home}</dd></div></dl>
+      <dl><div><dt>MAG BESONDERS</dt><dd>${friend.likes.join(" · ")}</dd></div><div><dt>WOHNT</dt><dd>${friend.home}</dd></div><div class="friend-trip-effect"><dt>AUF REISEN</dt><dd><strong>${friend.travelInfluence.label}</strong> · ${friend.travelInfluence.description}<em>${formatNeedChanges(friend.travelInfluence.changes)}</em></dd></div></dl>
       <blockquote>„${friend.quote}“</blockquote>
       <footer>Kennengelernt am ${date} · ${entry.meetings} ${entry.meetings === 1 ? "Begegnung" : "Begegnungen"}</footer>`;
     elements.friendbookGrid.append(card);
@@ -737,7 +942,7 @@ function renderQuestIndicator(now = Date.now()) {
   if (quest) $("#quest-alert-title").textContent = quest.title;
   if (due && quest) {
     const noticeKey = `${activePetId}:${state.questProgress.dayKey}:${quest.id}`;
-    if (noticeKey !== lastQuestNotice && !document.hidden && !interactionBusy && !elements.welcomeDialog.open && !elements.dedicationDialog.open) {
+    if (noticeKey !== lastQuestNotice && travelReturnHandledAt !== now && !document.hidden && !interactionBusy && !elements.welcomeDialog.open && !elements.dedicationDialog.open) {
       lastQuestNotice = noticeKey;
       talk(state.questProgress.activeId
         ? `Unsere Quest „${quest.title}“ wartet auf uns.`
@@ -969,9 +1174,14 @@ function render(now = Date.now()) {
 
   elements.sleepLabel.textContent = state.sleeping ? "WECKEN" : "SCHLAFEN";
   elements.sleepAction.querySelector("small").textContent = state.sleeping ? "Guten Morgen" : "Licht aus";
-  $$('button[data-action]:not([data-action="sleep"])', elements.actions).forEach((button) => {
+  $$('button[data-action]:not([data-action="sleep"]):not([data-action="travel"])', elements.actions).forEach((button) => {
     button.disabled = state.sleeping || interactionBusy || traveling;
   });
+  const travelAction = $('button[data-action="travel"]', elements.actions);
+  const cooldownMinutes = !traveling ? Math.max(0, Math.ceil(((state.travel?.manualTravelReadyAt || 0) - now) / 60_000)) : 0;
+  travelAction.disabled = interactionBusy || (!traveling && state.sleeping);
+  travelAction.querySelector("strong").textContent = traveling ? "REISEPOST" : cooldownMinutes ? "REISEPAUSE" : "REISE";
+  travelAction.querySelector("small").textContent = traveling ? "Zurückrufen" : cooldownMinutes ? `Noch ~${cooldownMinutes} Min` : "Losziehen";
   elements.sleepAction.disabled = interactionBusy || traveling;
   renderLandscape(now, traveling);
   renderWeather();
@@ -1735,6 +1945,7 @@ function resetSceneForSwitch() {
   currentConversation = null;
   interactionBusy = false;
   selectedItem = null;
+  selectedJourneyFriendId = null;
   pendingQuestAction = null;
   lastQuestNotice = "";
   elements.sceneLayer.replaceChildren();
@@ -1878,6 +2089,15 @@ elements.travelPostcard.addEventListener("click", openTravelDetails);
 $("#inventory-button").addEventListener("click", () => openInventory("all"));
 $("#friendbook-button").addEventListener("click", openFriendBook);
 $("#start-journey-button").addEventListener("click", startManualJourney);
+$("#journey-friend-options").addEventListener("change", (event) => {
+  const input = event.target.closest('input[name="journey-friend"]');
+  if (!input) return;
+  selectedJourneyFriendId = input.value || null;
+  updateJourneySelection();
+});
+$("#request-travel-recall").addEventListener("click", showTravelRecallConfirmation);
+$("#cancel-travel-recall").addEventListener("click", hideTravelRecallConfirmation);
+$("#confirm-travel-recall").addEventListener("click", recallCurrentJourney);
 
 $("#inventory-tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-filter]");

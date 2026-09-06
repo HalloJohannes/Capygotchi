@@ -41,11 +41,14 @@ import {
   taskQuestComplete,
 } from "../public/capygotchi/quest-core.js";
 import {
+  RECALL_COOLDOWN_MS,
   TRAVEL_DESTINATIONS,
   departNow,
   destinationById,
   isTraveling,
   normalizeTravel,
+  recallCompanionScale,
+  recallTravel,
   travelProgress,
 } from "../public/capygotchi/travel-core.js";
 import {
@@ -76,6 +79,8 @@ import {
   FRIEND_PROFILES,
   createFriendBook,
   friendBookCompletion,
+  friendTravelChanges,
+  knownTravelFriend,
   markFriendBookSeen,
   meetTravelFriend,
   travelFriendFor,
@@ -123,7 +128,7 @@ test("absence report explains offline progress without killing the pet", () => {
   assert.equal(report.elapsedMs, 6 * 3_600_000);
   assert.ok(report.changes.satiety < 0);
   assert.ok(report.state.satiety >= 0);
-  assert.equal(report.state.version, 7);
+  assert.equal(report.state.version, 8);
 });
 
 test("interactions stay within healthy stat limits", () => {
@@ -142,7 +147,7 @@ test("pet state remains valid, names stay compact, and Emmi is the default", () 
   assert.ok(state.name.length <= 14);
   assert.equal(state.satiety, 100);
   assert.equal(state.fun, 0);
-  assert.equal(state.version, 7);
+  assert.equal(state.version, 8);
   assert.equal(state.social, 84);
   assert.equal(makeState(1).name, "Emmi");
   assert.equal(makeState(1, "Goldie", "golden").furVariant, "golden");
@@ -274,17 +279,105 @@ test("a player can send the Capy on a destination-blind surprise trip", () => {
   assert.equal(stillAway.returnsAt, travel.returnsAt);
 });
 
-test("travel transfers a newly met friend into the completed trip", () => {
+test("travel transfers a newly met friend and chosen companion into the completed trip", () => {
   const now = Date.UTC(2026, 7, 29, 10);
   const adoptedAt = now - 86_400_000;
-  let travel = departNow(null, adoptedAt, now, "emmi:friend-trip");
+  let travel = departNow(null, adoptedAt, now, "emmi:friend-trip", "kaeptn-keks");
   travel.meetingFriendId = "fiete";
   const returnsAt = travel.returnsAt;
   travel = normalizeTravel(travel, adoptedAt, returnsAt + 1, "emmi:friend-trip");
   assert.equal(travel.status, "home");
   assert.equal(travel.lastMeetingFriendId, "fiete");
+  assert.equal(travel.lastBookCompanionId, "kaeptn-keks");
+  assert.equal(travel.bookCompanionId, null);
   assert.equal(travel.meetingFriendId, null);
-  assert.equal(travel.version, 3);
+  assert.equal(travel.lastReturnReason, "completed");
+  assert.equal(travel.version, 4);
+});
+
+test("version-three trips migrate in place without losing pending cargo", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  const candidate = {
+    version: 3,
+    status: "away",
+    destinationId: "funkelfjord",
+    departedAt: now - 30 * 60_000,
+    returnsAt: now + 90 * 60_000,
+    nextDepartureAt: 0,
+    completedTrips: 2,
+    visitedIds: ["heide"],
+    rewardId: "glitter_lantern",
+    companionId: "duck",
+    meetingFriendId: "lumi",
+    returnPending: false,
+  };
+  const migrated = normalizeTravel(candidate, now - 86_400_000, now, "emmi:migration");
+  assert.equal(migrated.version, 4);
+  assert.equal(migrated.rewardId, "glitter_lantern");
+  assert.equal(migrated.companionId, "duck");
+  assert.equal(migrated.meetingFriendId, "lumi");
+  assert.equal(migrated.bookCompanionId, null);
+  const oldPending = normalizeTravel({
+    ...candidate,
+    status: "home",
+    destinationId: null,
+    nextDepartureAt: now + 60_000,
+    returnPending: true,
+  }, now - 86_400_000, now, "emmi:migration");
+  assert.equal(oldPending.lastReturnReason, "completed");
+});
+
+test("an early recall comes home once without reward, meeting, or completed-trip credit", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  const adoptedAt = now;
+  let travel = departNow(null, adoptedAt, now, "emmi:recall", "fiete");
+  travel.rewardId = "harbor_radio";
+  travel.meetingFriendId = "alma";
+  const recalledAt = now + 45 * 60_000;
+  travel = recallTravel(travel, adoptedAt, recalledAt, "emmi:recall");
+  assert.equal(travel.status, "home");
+  assert.equal(travel.completedTrips, 0);
+  assert.equal(travel.lastReturnReason, "recalled");
+  assert.equal(travel.returnPending, true);
+  assert.equal(travel.lastBookCompanionId, "fiete");
+  assert.equal(travel.lastRewardId, null);
+  assert.equal(travel.lastMeetingFriendId, null);
+  assert.equal(travel.rewardId, null);
+  assert.equal(travel.meetingFriendId, null);
+  assert.ok(travel.lastTravelProgress > 0 && travel.lastTravelProgress < 1);
+  assert.ok(travel.nextDepartureAt > recalledAt);
+  assert.equal(travel.manualTravelReadyAt, recalledAt + RECALL_COOLDOWN_MS);
+  assert.ok(travel.visitedIds.includes(travel.lastDestinationId));
+  const delayedOpen = normalizeTravel(travel, adoptedAt, travel.nextDepartureAt + 1, "emmi:recall");
+  assert.equal(delayedOpen.status, "home");
+  assert.equal(delayedOpen.lastReturnReason, "recalled");
+  assert.equal(delayedOpen.returnPending, true);
+  assert.equal(delayedOpen.completedTrips, 0);
+  assert.equal(departNow(travel, adoptedAt, recalledAt + 1, "emmi:recall", "fiete").status, "home");
+  const repeated = recallTravel(travel, adoptedAt, recalledAt + 1, "emmi:recall");
+  assert.deepEqual(repeated, normalizeTravel(travel, adoptedAt, recalledAt + 1, "emmi:recall"));
+});
+
+test("a recall at the natural return time resolves as a completed journey", () => {
+  const now = Date.UTC(2026, 7, 29, 10);
+  const adoptedAt = now;
+  const travel = departNow(null, adoptedAt, now, "emmi:on-time", "fiete");
+  const returned = recallTravel(travel, adoptedAt, travel.returnsAt, "emmi:on-time");
+  assert.equal(returned.lastReturnReason, "completed");
+  assert.equal(returned.completedTrips, 1);
+  assert.equal(returned.lastTravelProgress, 1);
+  assert.equal(recallCompanionScale(0), 0);
+  assert.equal(recallCompanionScale(1), 0.75);
+});
+
+test("an explicit departure wins over an auto trip that became due inside the journey dialog", () => {
+  const adoptedAt = Date.UTC(2026, 7, 29, 10);
+  const home = normalizeTravel(null, adoptedAt, adoptedAt, "emmi:dialog-race");
+  const manual = departNow(home, adoptedAt, home.nextDepartureAt + 1, "emmi:dialog-race", "fiete");
+  assert.equal(manual.status, "away");
+  assert.equal(manual.initiatedBy, "player");
+  assert.equal(manual.bookCompanionId, "fiete");
+  assert.equal(manual.departedAt, home.nextDepartureAt + 1);
 });
 
 test("each Capy gets a persistent, idempotent travel friend book", () => {
@@ -309,6 +402,36 @@ test("each Capy gets a persistent, idempotent travel friend book", () => {
   assert.equal(reunion.friendBook.friends[0].meetings, 2);
   assert.equal(reunion.friendBook.friends[0].firstMetAt, 100);
   assert.equal(friendBookCompletion(markFriendBookSeen(reunion.friendBook)).unseen, 0);
+});
+
+test("all sixteen friends have distinct, balanced travel influences", () => {
+  const allowedNeeds = new Set(["satiety", "fun", "clean", "energy", "social", "curiosity"]);
+  const signatures = new Set();
+  const positivelyCovered = new Set();
+  for (const friend of FRIEND_PROFILES) {
+    const changes = friend.travelInfluence.changes;
+    const entries = Object.entries(changes);
+    signatures.add(JSON.stringify(changes));
+    assert.ok(friend.travelInfluence.label);
+    assert.ok(friend.travelInfluence.description.length > 24);
+    assert.ok(entries.length >= 2 && entries.length <= 3);
+    assert.ok(entries.every(([key, value]) => allowedNeeds.has(key) && Number.isInteger(value) && value >= -3 && value <= 8));
+    assert.ok(entries.filter(([, value]) => value < 0).length <= 1);
+    const positiveTotal = entries.reduce((sum, [, value]) => sum + Math.max(0, value), 0);
+    assert.ok(positiveTotal >= 9 && positiveTotal <= 12);
+    entries.filter(([, value]) => value > 0).forEach(([key]) => positivelyCovered.add(key));
+    assert.deepEqual(friendTravelChanges(friend.id), changes);
+    const lateRecallChanges = friendTravelChanges(friend.id, recallCompanionScale(1));
+    assert.ok(-12 + (lateRecallChanges.fun || 0) < 0);
+    assert.ok(-10 + (lateRecallChanges.curiosity || 0) < 0);
+  }
+  assert.equal(signatures.size, 16);
+  assert.deepEqual([...positivelyCovered].sort(), [...allowedNeeds].sort());
+  const met = meetTravelFriend(createFriendBook(), "fiete", "speicherstadt", 100, "trip-known");
+  assert.equal(knownTravelFriend(met.friendBook, "fiete")?.name, "Fiete");
+  assert.equal(knownTravelFriend(met.friendBook, "alma"), null);
+  assert.equal(knownTravelFriend(met.friendBook, "manipuliert"), null);
+  assert.ok(Object.values(friendTravelChanges("fiete", 0.5)).every((value) => Number.isInteger(value)));
 });
 
 test("the collection has exclusive clothing slots and placeable finds", () => {
@@ -441,7 +564,7 @@ test("state migration preserves Capys and adds quests, inventory, garden, world,
   const quests = normalizeQuestProgress(migrated.questProgress, migrated.adoptedAt, now, "Lotti");
   assert.equal(migrated.name, "Lotti");
   assert.equal(migrated.xp, 77);
-  assert.equal(migrated.version, 7);
+  assert.equal(migrated.version, 8);
   assert.deepEqual(migrated.inventory.ownedItemIds, ["berry_cap"]);
   assert.equal(migrated.garden.plots.length, 4);
   assert.ok(WORLD_AREAS[migrated.world.area]);
@@ -472,6 +595,9 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(html, /inventory-dialog/);
   assert.match(html, /friendbook-dialog/);
   assert.match(html, /friendbook-button/);
+  assert.match(html, /journey-friend-options/);
+  assert.match(html, /confirm-travel-recall/);
+  assert.match(html, /role="progressbar"/);
   assert.match(html, /garden-dialog/);
   assert.match(html, /WINTERGARTEN/);
   assert.match(html, /animal-visitor/);
@@ -491,6 +617,8 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(app, /switchToPet/);
   assert.match(app, /normalizeTravel/);
   assert.match(app, /departNow/);
+  assert.match(app, /recallTravel/);
+  assert.match(app, /knownTravelFriend/);
   assert.match(app, /toggleEquipment/);
   assert.match(app, /meetTravelFriend/);
   assert.match(app, /sortFoodEntriesBySatiety/);
@@ -500,7 +628,7 @@ test("the published app is German, installable, dedicated, and drag-interactive"
   assert.match(app, /foodAvailability/);
   assert.match(app, /loadGermanyWeather/);
   assert.equal(JSON.parse(manifest).display, "standalone");
-  assert.match(serviceWorker, /capygotchi-v9/);
+  assert.match(serviceWorker, /capygotchi-v10/);
   assert.match(serviceWorker, /dialogues\.js/);
   assert.match(serviceWorker, /pet-library\.js/);
   assert.match(serviceWorker, /quest-core\.js/);
